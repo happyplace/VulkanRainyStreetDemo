@@ -62,7 +62,7 @@ if ("${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC")
 	)
 endif()
 
-if ("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")	
+if ("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_C_COMPILER_ID}" STREQUAL "Clang")	
 	add_definitions(-D_GNU_SOURCE)
 	add_definitions(-DKIWI_USE_PTHREAD_IMPL)
 	set(kiwi-tasker-src ${kiwi-tasker-src}
@@ -88,7 +88,7 @@ add_subdirectory("external/deboost.context")
 
 find_package (Threads REQUIRED)
 
-add_library(KiwiTasker SHARED ${kiwi-tasker-src})
+add_library(KiwiTasker ${kiwi-tasker-src})
 
 set_property(TARGET KiwiTasker PROPERTY C_STANDARD 11)
 set_property(TARGET KiwiTasker PROPERTY C_STANDARD_REQUIRED ON)
