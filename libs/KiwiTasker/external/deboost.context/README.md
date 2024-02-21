@@ -4,7 +4,7 @@
 ### Build
 #### Currently supported platforms 
 - Windows (x86_64, Win32)
-- Linux (x86_64/x86)
+- Linux (x86_64/x86/ARM/ARM64)
 - OSX (x86_64/x86)
 - Android (ARM/x86/ARM64/x86_64)
 - iOS (Arm64, Arm7, x86_64, i386)
