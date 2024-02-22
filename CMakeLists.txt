@@ -17,6 +17,8 @@ add_definitions(-DNOMINMAX)
 include_directories(src)
 set(vrsd-src
     "src/main.cpp"
+    "src/Window.h"
+    "src/Window.cpp"
 )
 
 if (${CMAKE_C_COMPILER_ID} STREQUAL "MSVC")
