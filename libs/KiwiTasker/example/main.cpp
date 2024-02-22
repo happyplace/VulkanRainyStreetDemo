@@ -30,9 +30,8 @@ struct TestData
     int num2 = 0;
 };
 
-void TheSuperSuperTest(KIWI_Scheduler* scheduler, void* arg)
+void TheSuperSuperTest(void* arg)
 {
-    (void)scheduler;
     TestData* data = reinterpret_cast<TestData*>(arg);
     (void)data;
 
@@ -53,17 +52,15 @@ struct PrintJobData
     int num = 0;
 };
 
-void TestPrintJob(KIWI_Scheduler* scheduler, void* arg)
+void TestPrintJob(void* arg)
 {
-    (void)scheduler;
     PrintJobData* data = reinterpret_cast<PrintJobData*>(arg);
 
     printf("TestPrintJob: %i\n", data->num);    
 }
 
-void TestJob(KIWI_Scheduler* scheduler, void* arg)
+void TestJob(void* arg)
 {
-    (void)scheduler;
     (void)arg;
     KIWI_Job jobs[10];
     PrintJobData datas[10];
@@ -88,7 +85,7 @@ struct SeedData
     unsigned int seed = 0;
 };
 
-void GenerateNumbersAndPrint(KIWI_Scheduler* /*scheduler*/, void* arg)
+void GenerateNumbersAndPrint(void* arg)
 {
     SeedData* data = reinterpret_cast<SeedData*>(arg);
 
@@ -106,7 +103,7 @@ void GenerateNumbersAndPrint(KIWI_Scheduler* /*scheduler*/, void* arg)
     }
 }
 
-void StartJobs(KIWI_Scheduler* scheduler, void* arg)
+void StartJobs(void* arg)
 {
     std::atomic_bool* endApp = reinterpret_cast<std::atomic_bool*>(arg);
 

@@ -148,7 +148,7 @@ void KIWI_FiberEntry(fcontext_transfer_t t)
 	
 	fiber->context = t;
 
-	fiber->job.entry(workerStorage->scheduler, fiber->job.arg);
+	fiber->job.entry(fiber->job.arg);
 	
 	// updating worker storage and fiber because we could be on another thread now
 	workerStorage = KIWI_GetFiberWorkerStorage(KIWI_ThreadImplGetWorkerThreadIndex());

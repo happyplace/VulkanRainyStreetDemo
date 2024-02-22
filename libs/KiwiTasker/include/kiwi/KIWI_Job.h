@@ -4,9 +4,7 @@
 extern "C" {
 #endif
 
-struct KIWI_Scheduler;
-
-typedef void (*KIWI_JobEntry)(struct KIWI_Scheduler*, void*);
+typedef void (*KIWI_JobEntry)(void*);
 
 typedef struct KIWI_Job
 {
