@@ -63,6 +63,7 @@ void TestPrintJob(KIWI_Scheduler* scheduler, void* arg)
 
 void TestJob(KIWI_Scheduler* scheduler, void* arg)
 {
+    (void)scheduler;
     (void)arg;
     KIWI_Job jobs[10];
     PrintJobData datas[10];
@@ -77,8 +78,8 @@ void TestJob(KIWI_Scheduler* scheduler, void* arg)
 
     printf("TestJob - Start\n");
     KIWI_Counter* counter = NULL;
-    KIWI_SchedulerAddJobs(scheduler, jobs, 10, KIWI_JobPriority_Normal, &counter);
-    KIWI_SchedulerWaitForCounterAndFree(scheduler, counter, 0);
+    KIWI_SchedulerAddJobs(jobs, 10, KIWI_JobPriority_Normal, &counter);
+    KIWI_SchedulerWaitForCounterAndFree(counter, 0);
     printf("TestJob - End\n");
 }
 
@@ -133,9 +134,9 @@ void StartJobs(KIWI_Scheduler* scheduler, void* arg)
     jobs[1].arg = &seedData;
 
     KIWI_Counter* counter = NULL;
-    KIWI_SchedulerAddJobs(scheduler, jobs, size, KIWI_JobPriority_Normal, &counter);
-    KIWI_SchedulerWaitForCounter(scheduler, counter, 0);
-    KIWI_SchedulerFreeCounter(scheduler, counter);
+    KIWI_SchedulerAddJobs(jobs, size, KIWI_JobPriority_Normal, &counter);
+    KIWI_SchedulerWaitForCounter(counter, 0);
+    KIWI_SchedulerFreeCounter(counter);
 
     printf("StartJobs - End\n");
 
@@ -152,7 +153,7 @@ int main(int /*argc*/, char** /*argv*/)
     KIWI_SchedulerParams params;
     KIWI_DefaultSchedulerParams(&params);
 
-    KIWI_Scheduler* scheduler = KIWI_CreateScheduler(&params);
+    KIWI_InitScheduler(&params);
 
     std::atomic_bool quitApp;
     quitApp.store(false);
@@ -160,14 +161,14 @@ int main(int /*argc*/, char** /*argv*/)
     KIWI_Job startJob;
     startJob.entry = StartJobs;
     startJob.arg = &quitApp;
-    KIWI_SchedulerAddJob(scheduler, &startJob, KIWI_JobPriority_High, NULL);
+    KIWI_SchedulerAddJob(&startJob, KIWI_JobPriority_High, NULL);
 
     while (!quitApp.load())
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
 
-    KIWI_FreeScheduler(scheduler);
+    KIWI_FreeScheduler();
 
     return 0;
 }
