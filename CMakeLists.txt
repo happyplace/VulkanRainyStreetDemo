@@ -19,6 +19,8 @@ set(vrsd-src
     "src/main.cpp"
     "src/Window.h"
     "src/Window.cpp"
+    "src/EntryJob.h"
+    "src/EntryJob.cpp"
 )
 
 if (${CMAKE_C_COMPILER_ID} STREQUAL "MSVC")
@@ -41,4 +43,8 @@ endif()
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIR})
 target_link_libraries(VulkanRainyStreetDemo ${SDL2_LIBRARY} ${SDL2MAIN_LIBRARY})
+
+add_subdirectory("libs/KiwiTasker")
+include_directories("libs/KiwiTasker/include")
+target_link_libraries(VulkanRainyStreetDemo KiwiTasker)
 
