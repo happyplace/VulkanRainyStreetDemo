@@ -21,6 +21,7 @@ set(vrsd-src
     "src/Window.cpp"
     "src/EntryJob.h"
     "src/EntryJob.cpp"
+    "src/Singleton.h"
 )
 
 if (${CMAKE_C_COMPILER_ID} STREQUAL "MSVC")
