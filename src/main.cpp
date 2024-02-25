@@ -4,6 +4,7 @@
 
 #include "Window.h"
 #include "EntryJob.h"
+#include "Singleton.h"
 
 int main(int argc, char** argv)
 {
@@ -12,8 +13,8 @@ int main(int argc, char** argv)
 
     KIWI_InitScheduler(&params);
 
-    Window window;
-    if (!window.Init(argc, argv))
+    Singleton<Window>::Create();
+    if (!Singleton<Window>::Get()->Init(argc, argv))
     {
         return 1;
     }
@@ -21,9 +22,11 @@ int main(int argc, char** argv)
     KIWI_Job firstJob { EntryJob, nullptr };
     KIWI_SchedulerAddJob(&firstJob, KIWI_JobPriority_High, nullptr);
 
-    window.WaitAndProcessEvents();
+    Singleton<Window>::Get()->WaitAndProcessEvents();
 
     KIWI_FreeScheduler();
+
+    Singleton<Window>::Destroy();
 
     return 0;
 }
