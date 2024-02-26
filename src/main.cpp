@@ -5,6 +5,7 @@
 #include "Window.h"
 #include "EntryJob.h"
 #include "Singleton.h"
+#include "VulkanObjects.h"
 
 int main(int argc, char** argv)
 {
@@ -19,6 +20,8 @@ int main(int argc, char** argv)
         return 1;
     }
 
+    Singleton<VulkanObjects>::Create();
+
     KIWI_Job firstJob { EntryJob, nullptr };
     KIWI_SchedulerAddJob(&firstJob, KIWI_JobPriority_High, nullptr);
 
@@ -26,6 +29,7 @@ int main(int argc, char** argv)
 
     KIWI_FreeScheduler();
 
+    Singleton<VulkanObjects>::Destroy();
     Singleton<Window>::Destroy();
 
     return 0;
