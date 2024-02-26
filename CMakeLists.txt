@@ -22,6 +22,9 @@ set(vrsd-src
     "src/EntryJob.h"
     "src/EntryJob.cpp"
     "src/Singleton.h"
+    "src/VulkanObjects.h"
+    "src/VulkanInitializeJobs.h"
+    "src/VulkanInitializeJobs.cpp"
 )
 
 if (${CMAKE_C_COMPILER_ID} STREQUAL "MSVC")
