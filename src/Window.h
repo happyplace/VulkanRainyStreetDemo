@@ -8,7 +8,7 @@ public:
 
     // create and open window, returns true on success.
     // if this function fails application should be terminated
-    bool Init(int argc, char** argv);
+    bool Init();
 
     // this function should be called AFTER the job system has been started and the first job has
     // been pushed. This will wait for a window event and then process it.

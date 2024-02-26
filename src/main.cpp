@@ -6,6 +6,7 @@
 #include "EntryJob.h"
 #include "Singleton.h"
 #include "VulkanObjects.h"
+#include "GameCommandParameters.h"
 
 int main(int argc, char** argv)
 {
@@ -14,8 +15,11 @@ int main(int argc, char** argv)
 
     KIWI_InitScheduler(&params);
 
+    Singleton<GameCommandParameters>::Create();
+    Singleton<GameCommandParameters>::Get()->SetValues(argc, argv);
+
     Singleton<Window>::Create();
-    if (!Singleton<Window>::Get()->Init(argc, argv))
+    if (!Singleton<Window>::Get()->Init())
     {
         return 1;
     }
@@ -31,6 +35,7 @@ int main(int argc, char** argv)
 
     Singleton<VulkanObjects>::Destroy();
     Singleton<Window>::Destroy();
+    Singleton<GameCommandParameters>::Destroy();
 
     return 0;
 }

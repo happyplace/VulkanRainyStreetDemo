@@ -3,6 +3,8 @@
 #include <SDL.h>
 
 #include "GameUtils.h"
+#include "Singleton.h"
+#include "GameCommandParameters.h"
 
 class WindowImpl
 {
@@ -25,31 +27,44 @@ void Window::Destroy()
 {
     if (m_impl->m_window != nullptr)
     {
-	SDL_DestroyWindow(m_impl->m_window);
+        SDL_DestroyWindow(m_impl->m_window);
     }
 
     SDL_Quit();
 }
 
-bool Window::Init(int /*argc*/, char** /*argv*/)
+bool Window::Init()
 {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) < 0)
     {
-	GAME_SHOW_ERROR("SDL Failed Init", SDL_GetError());
+        GAME_SHOW_ERROR("SDL Failed Init", SDL_GetError());
         return false;
+    }
+
+    int width = 1280;
+    int height = 720;
+
+    GameCommandParameters* params = Singleton<GameCommandParameters>::Get();
+    if (params->IsSet("window-width") || params->IsSet("window-height"))
+    {
+        GAME_ASSERT(params->IsSet("window-width"));
+        GAME_ASSERT(params->IsSet("window-height"));
+
+        width = static_cast<int>(params->GetLong("window-width"));
+        height = static_cast<int>(params->GetLong("window-height"));
     }
 
     m_impl->m_window = SDL_CreateWindow(
         "Vulkan Rainy Street Demo", 
-	SDL_WINDOWPOS_UNDEFINED,
-	SDL_WINDOWPOS_UNDEFINED, 
-	1280, 720, 
-	SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+        SDL_WINDOWPOS_UNDEFINED,
+        SDL_WINDOWPOS_UNDEFINED, 
+        width, height, 
+        SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
 
     if (m_impl->m_window == nullptr)
     {
-	GAME_SHOW_ERROR("Window Creation Failure", SDL_GetError());
-	return false;
+        GAME_SHOW_ERROR("Window Creation Failure", SDL_GetError());
+        return false;
     }
 
     return true;
@@ -60,19 +75,19 @@ void Window::WaitAndProcessEvents()
     bool quit = false;
     while (!quit)
     {
-	SDL_Event event;
+        SDL_Event event;
         if (SDL_WaitEvent(&event) != 1)
-	{
-	    GAME_SHOW_ERROR("Error Waiting on Window Event", SDL_GetError());
-	    quit = true;
-	}
-	else
-	{
-	    if (event.type == SDL_QUIT)
-	    {
-		quit = true;
-	    }
-	}
+        {
+            GAME_SHOW_ERROR("Error Waiting on Window Event", SDL_GetError());
+            quit = true;
+        }
+        else
+        {
+            if (event.type == SDL_QUIT)
+            {
+                quit = true;
+            }
+        }
     }
 }
 

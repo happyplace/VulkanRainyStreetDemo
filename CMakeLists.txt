@@ -25,6 +25,8 @@ set(vrsd-src
     "src/VulkanObjects.h"
     "src/VulkanInitializeJobs.h"
     "src/VulkanInitializeJobs.cpp"
+    "src/GameCommandParameters.h"
+    "src/GameCommandParameters.cpp"
 )
 
 if (${CMAKE_C_COMPILER_ID} STREQUAL "MSVC")
