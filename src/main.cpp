@@ -22,6 +22,8 @@ int main(int argc, char** argv)
     ftl::Task task = { EntryJob, nullptr };
     taskScheduler.AddTask(task, ftl::TaskPriority::High);
 
+    Singleton<Window>::Get()->WaitAndProcessEvents();
+
     Singleton<Window>::Destroy();
     Singleton<GameCommandParameters>::Destroy();
 
