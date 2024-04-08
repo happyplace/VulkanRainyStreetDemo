@@ -112,3 +112,7 @@ imgui.ini
 
 # vi coc
 .cache
+
+# vim related files
+compile_commands.json
+.nvim
