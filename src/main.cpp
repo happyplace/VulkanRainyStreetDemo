@@ -1,20 +1,9 @@
-#include <iostream>
-
-#include "kiwi/KIWI_Scheduler.h"
-
 #include "Window.h"
-#include "EntryJob.h"
 #include "Singleton.h"
-#include "VulkanObjects.h"
 #include "GameCommandParameters.h"
 
 int main(int argc, char** argv)
 {
-    KIWI_SchedulerParams params;
-    KIWI_DefaultSchedulerParams(&params);
-
-    KIWI_InitScheduler(&params);
-
     Singleton<GameCommandParameters>::Create();
     Singleton<GameCommandParameters>::Get()->SetValues(argc, argv);
 
@@ -24,16 +13,6 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    Singleton<VulkanObjects>::Create();
-
-    KIWI_Job firstJob { EntryJob, nullptr };
-    KIWI_SchedulerAddJob(&firstJob, KIWI_JobPriority_High, nullptr);
-
-    Singleton<Window>::Get()->WaitAndProcessEvents();
-
-    KIWI_FreeScheduler();
-
-    Singleton<VulkanObjects>::Destroy();
     Singleton<Window>::Destroy();
     Singleton<GameCommandParameters>::Destroy();
 

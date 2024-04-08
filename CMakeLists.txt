@@ -19,12 +19,7 @@ set(vrsd-src
     "src/main.cpp"
     "src/Window.h"
     "src/Window.cpp"
-    "src/EntryJob.h"
-    "src/EntryJob.cpp"
     "src/Singleton.h"
-    "src/VulkanObjects.h"
-    "src/VulkanInitializeJobs.h"
-    "src/VulkanInitializeJobs.cpp"
     "src/GameCommandParameters.h"
     "src/GameCommandParameters.cpp"
 )
@@ -50,7 +45,7 @@ find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIR})
 target_link_libraries(VulkanRainyStreetDemo ${SDL2_LIBRARY} ${SDL2MAIN_LIBRARY})
 
-add_subdirectory("libs/KiwiTasker")
-include_directories("libs/KiwiTasker/include")
-target_link_libraries(VulkanRainyStreetDemo KiwiTasker)
+#add_subdirectory("libs/KiwiTasker")
+#include_directories("libs/KiwiTasker/include")
+#target_link_libraries(VulkanRainyStreetDemo KiwiTasker)
 
