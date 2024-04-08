@@ -22,6 +22,8 @@ set(vrsd-src
     "src/Singleton.h"
     "src/GameCommandParameters.h"
     "src/GameCommandParameters.cpp"
+    "src/EntryJob.h"
+    "src/EntryJob.cpp"
 )
 
 if (${CMAKE_C_COMPILER_ID} STREQUAL "MSVC")
@@ -45,7 +47,7 @@ find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIR})
 target_link_libraries(VulkanRainyStreetDemo ${SDL2_LIBRARY} ${SDL2MAIN_LIBRARY})
 
-#add_subdirectory("libs/KiwiTasker")
-#include_directories("libs/KiwiTasker/include")
-#target_link_libraries(VulkanRainyStreetDemo KiwiTasker)
+add_subdirectory("libs/FiberTaskingLib")
+include_directories("libs/FiberTaskingLib/include")
+target_link_libraries(VulkanRainyStreetDemo ftl)
 

@@ -1,15 +1,8 @@
 #include "EntryJob.h"
 
-#include "kiwi/KIWI_Scheduler.h"
+#include "ftl/task_scheduler.h"
 
-#include "VulkanInitializeJobs.h"
-
-void EntryJob(void* arg)
+void EntryJob(ftl::TaskScheduler* taskScheduler, void* /*arg*/)
 {
-    KIWI_Job job { InitializeVulkanJob, nullptr };
-
-    KIWI_Counter* counter = nullptr;
-    KIWI_SchedulerAddJobs(&job, 1, KIWI_JobPriority_High, &counter);
-    KIWI_SchedulerWaitForCounterAndFree(counter, 0);
 }
 

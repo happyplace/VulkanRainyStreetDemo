@@ -1,4 +1,6 @@
 #pragma once
 
-void EntryJob(void* arg);
+namespace ftl { class TaskScheduler; }
+
+void EntryJob(ftl::TaskScheduler* taskScheduler, void* arg);
 
