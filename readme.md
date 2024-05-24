@@ -2,7 +2,6 @@
 
 ## Feature Updates:
  - [ ] Multiple frames in flight
- - [x] Fiber tasking library
 
 ## New Features:
  - [ ] Instancing
