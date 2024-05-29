@@ -6,7 +6,7 @@ cmake_policy(SET CMP0025 NEW)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
-project(VulkanRainyStreetDemo C)
+project(VulkanRainyStreetDemo)
 
 if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
     message(FATAL_ERROR "Only 64-bit builds supported.")
@@ -16,7 +16,9 @@ add_definitions(-DNOMINMAX)
 
 include_directories(src)
 set(vrsd-src
-    "src/main.c"
+    "src/main.cpp"
+    "src/GameWindow.h"
+    "src/GameWindow.cpp"
 )
 
 if (${CMAKE_C_COMPILER_ID} STREQUAL "MSVC")
