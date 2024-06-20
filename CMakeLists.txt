@@ -19,6 +19,8 @@ set(vrsd-src
     "src/main.cpp"
     "src/GameWindow.h"
     "src/GameWindow.cpp"
+    "src/VulkanRenderer.h"
+    "src/VulkanRenderer.cpp"
 )
 
 if (${CMAKE_C_COMPILER_ID} STREQUAL "MSVC")
@@ -38,3 +40,7 @@ endif()
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIR})
 target_link_libraries(VulkanRainyStreetDemo ${SDL2_LIBRARY} ${SDL2MAIN_LIBRARY})
+
+find_package(Vulkan REQUIRED)
+include_directories(${Vulkan_INCLUDE_DIRS})
+target_link_libraries(VulkanRainyStreetDemo ${Vulkan_LIBRARIES})
