@@ -20,7 +20,7 @@ int main(int argc, char** argv)
         game_window_process_events(window);
     }
 
-    vulkan_renderer_destory(renderer);
+    vulkan_renderer_destroy(renderer);
     game_window_destory(window);
     return 0;
 }

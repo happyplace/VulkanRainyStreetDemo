@@ -1,9 +1,29 @@
 #ifndef VRSD_VulkanRenderer_h_
 #define VRSD_VulkanRenderer_h_
 
-struct VulkanRenderer;
+#include <vulkan/vulkan.h>
+#include <vulkan/vulkan_core.h>
+
+#define VK_DEBUG
+//#define VK_PORTABILITY
+
+struct VulkanRenderer
+{
+    VkInstance instance = VK_NULL_HANDLE;
+    VkSurfaceKHR window_surface = VK_NULL_HANDLE;
+#ifdef VK_DEBUG
+    VkDebugReportCallbackEXT debug_report_callback_ext = VK_NULL_HANDLE;
+#endif // VK_DEBUG
+    VkPhysicalDevice physical_device = VK_NULL_HANDLE;
+    uint32_t graphics_queue_index = 0;
+    uint32_t compute_queue_index = 0;
+    VkDeviceSize min_uniform_buffer_offset_alignment = 0;
+    VkDevice device = VK_NULL_HANDLE;
+    VkQueue graphics_queue = VK_NULL_HANDLE;
+    VkQueue compute_queue = VK_NULL_HANDLE;
+};
 
 VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window);
-void vulkan_renderer_destory(VulkanRenderer* vulkan_renderer);
+void vulkan_renderer_destroy(VulkanRenderer* vulkan_renderer);
 
 #endif // VRSD_VulkanRenderer_h_

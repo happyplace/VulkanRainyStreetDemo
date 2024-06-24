@@ -1,32 +1,17 @@
 #include "VulkanRenderer.h"
 
-#include <inttypes.h>
+#include <cstdint>
 #include <vector>
 
 #include <SDL_assert.h>
 #include <SDL_log.h>
 #include <SDL_vulkan.h>
 
-#include <vulkan/vulkan.h>
-#include <vulkan/vulkan_core.h>
-
 #include "GameWindow.h"
 
 #define VK_ASSERT(X) SDL_assert(VK_SUCCESS == X)
-#define VK_DEBUG
-#define VK_PORTABILITY
 
 static VkAllocationCallbacks* s_allocator = nullptr;
-
-struct VulkanRenderer
-{
-    VkInstance instance = VK_NULL_HANDLE;
-    VkSurfaceKHR window_surface = VK_NULL_HANDLE;
-
-#ifdef VK_DEBUG
-    VkDebugReportCallbackEXT debug_report_callback_ext = VK_NULL_HANDLE;
-#endif // VK_DEBUG
-};
 
 #ifdef VK_DEBUG
 static VKAPI_ATTR VkBool32 VKAPI_CALL vulkan_renderer_debug_callback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT /*type*/,
@@ -94,6 +79,26 @@ bool vulkan_renderer_init_instance(GameWindow* game_window, VulkanRenderer* vulk
     enabled_layer_names.push_back("VK_LAYER_KHRONOS_validation");
 #endif // VK_DEBUG
 
+    for (const char* layer_name : enabled_layer_names)
+    {
+        bool layer_available = false;
+
+        for (const VkLayerProperties& layer_properties : instance_layer_properties)
+        {
+            if (strcmp(layer_name, layer_properties.layerName) == 0)
+            {
+                layer_available = true;
+                break;
+            }
+        }
+
+        if (!layer_available)
+        {
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "failed to init vulkan instance, layer requested but not supported: %s", layer_name);
+            return false;
+        }
+    }
+
     VkInstanceCreateInfo instance_info;
     instance_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     instance_info.pNext = nullptr;
@@ -134,6 +139,7 @@ bool vulkan_renderer_init_instance(GameWindow* game_window, VulkanRenderer* vulk
     for (const char* requested_extension_name : enabled_extension_names)
     {
         bool extension_available = false;
+
         for (const VkExtensionProperties& extension_properties : instance_extension_properties)
         {
             if (strcmp(requested_extension_name, extension_properties.extensionName) == 0)
@@ -142,6 +148,7 @@ bool vulkan_renderer_init_instance(GameWindow* game_window, VulkanRenderer* vulk
                 break;
             }
         }
+
         if (!extension_available)
         {
             SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "failed to init vulkan instance, extension requested but not supported: %s", requested_extension_name);
@@ -192,22 +199,253 @@ bool vulkan_renderer_init_instance(GameWindow* game_window, VulkanRenderer* vulk
     return true;
 }
 
+bool vulkan_renderer_init_device(VulkanRenderer* vulkan_renderer)
+{
+    uint32_t physical_device_count = 0;
+    VK_ASSERT(vkEnumeratePhysicalDevices(vulkan_renderer->instance, &physical_device_count, nullptr));
+
+    std::vector<VkPhysicalDevice> physical_devices(physical_device_count);
+    VK_ASSERT(vkEnumeratePhysicalDevices(vulkan_renderer->instance, &physical_device_count, physical_devices.data()));
+
+    int32_t graphics_queue_index = -1;
+    int32_t compute_queue_index = -1;
+    int8_t device_type_score = -1;
+    VkPhysicalDevice physical_device = VK_NULL_HANDLE;
+
+    for (uint32_t i = 0; i < physical_device_count; ++i)
+    {
+        VkPhysicalDeviceProperties device_properties;
+        vkGetPhysicalDeviceProperties(physical_devices[i], &device_properties);
+
+        // we're only dealing with Discrete or Integrated gpus, everything else is ignored
+        // in the future we should just score all of the GPUs on their system and then pick
+        // the one with the highest score, and also allow them to select which GPU to use
+        if (device_properties.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU &&
+            device_properties.deviceType != VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
+        {
+            continue;
+        }
+
+        uint32_t queue_family_property_count = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(physical_devices[i], &queue_family_property_count, nullptr);
+
+        std::vector<VkQueueFamilyProperties> queue_family_properties(queue_family_property_count);
+        vkGetPhysicalDeviceQueueFamilyProperties(physical_devices[i], &queue_family_property_count, queue_family_properties.data());
+
+        int32_t graphics_index = -1;
+        int32_t compute_index = -1;
+
+        for (uint32_t k = 0; k < queue_family_property_count; ++k)
+        {
+            VkQueueFamilyProperties& family_property = queue_family_properties[k];
+
+            VkBool32 supports_present = false;
+            VK_ASSERT(vkGetPhysicalDeviceSurfaceSupportKHR(physical_devices[i], k, vulkan_renderer->window_surface, &supports_present));
+
+            // TODO: we take the first queue that supports the graphics or compute bit and don't care about any others, should we be doing more?
+            // at the very least should we be priortizing queues that susport both graphics and compute so we don't need to transfer things back
+            // and forward
+
+            if (graphics_index <= -1 && (family_property.queueFlags & VK_QUEUE_GRAPHICS_BIT) && supports_present)
+            {
+                graphics_index = k;
+            }
+
+            if (compute_index <= -1 && (family_property.queueFlags & VK_QUEUE_COMPUTE_BIT))
+            {
+                compute_index = k;
+            }
+        }
+
+        if (graphics_index >= 0 && compute_index >= 0)
+        {
+            int8_t device_score = static_cast<int8_t>(device_properties.deviceType);
+            if (device_score > device_type_score)
+            {
+                device_type_score = device_score;
+                graphics_queue_index = graphics_index;
+                compute_queue_index = compute_index;
+                physical_device = physical_devices[i];
+            }
+        }
+    }
+
+    if (graphics_queue_index < 0 || compute_queue_index < 0)
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "failed to find a suitable GPU");
+        return false;
+    }
+
+    vulkan_renderer->graphics_queue_index = graphics_queue_index;
+    vulkan_renderer->compute_queue_index = compute_queue_index;
+    vulkan_renderer->physical_device = physical_device;
+
+    uint32_t device_extension_count;
+    VK_ASSERT(vkEnumerateDeviceExtensionProperties(vulkan_renderer->physical_device, nullptr, &device_extension_count, nullptr));
+
+    std::vector<VkExtensionProperties> device_extensions(device_extension_count);
+    VK_ASSERT(vkEnumerateDeviceExtensionProperties(vulkan_renderer->physical_device, nullptr, &device_extension_count, device_extensions.data()));
+
+    VkPhysicalDeviceProperties physical_device_properties;
+    vkGetPhysicalDeviceProperties(vulkan_renderer->physical_device, &physical_device_properties);
+    vulkan_renderer->min_uniform_buffer_offset_alignment = physical_device_properties.limits.minUniformBufferOffsetAlignment;
+
+    std::vector<const char*> enabled_extension_names;
+    enabled_extension_names.push_back("VK_KHR_swapchain");
+
+    for (uint32_t i = 0; i < enabled_extension_names.size(); ++i)
+    {
+        bool extension_supported_on_device = false;
+        for (const VkExtensionProperties& extensionProperties : device_extensions)
+        {
+            if (strcmp(enabled_extension_names[i], extensionProperties.extensionName) == 0)
+            {
+                extension_supported_on_device = true;
+                break;
+            }
+        }
+
+        if (!extension_supported_on_device)
+        {
+            VkPhysicalDeviceProperties device_properties;
+            vkGetPhysicalDeviceProperties(vulkan_renderer->physical_device, &device_properties);
+
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "device %s does not support extension %s", device_properties.deviceName, enabled_extension_names[i]);;
+            return false;
+        }
+    }
+
+    std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
+
+    {
+        VkDeviceQueueCreateInfo& device_queue_create_info = queue_create_infos.emplace_back();
+        device_queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        device_queue_create_info.pNext = nullptr;
+        device_queue_create_info.flags = 0;
+        device_queue_create_info.queueCount = 1;
+        float queue_priority = 1.0f;
+        device_queue_create_info.pQueuePriorities = &queue_priority;
+        device_queue_create_info.queueFamilyIndex = vulkan_renderer->graphics_queue_index;
+    }
+
+    if (vulkan_renderer->graphics_queue_index != vulkan_renderer->compute_queue_index)
+    {
+        VkDeviceQueueCreateInfo& device_queue_create_info = queue_create_infos.emplace_back();
+        device_queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        device_queue_create_info.pNext = nullptr;
+        device_queue_create_info.flags = 0;
+        device_queue_create_info.queueCount = 1;
+        float queue_priority = 1.0f;
+        device_queue_create_info.pQueuePriorities = &queue_priority;
+        device_queue_create_info.queueFamilyIndex = vulkan_renderer->compute_queue_index;
+    }
+
+    VkPhysicalDeviceFeatures physical_device_features;
+    physical_device_features.robustBufferAccess = VK_FALSE;
+    physical_device_features.fullDrawIndexUint32 = VK_FALSE;
+    physical_device_features.imageCubeArray = VK_FALSE;
+    physical_device_features.independentBlend = VK_FALSE;
+    physical_device_features.geometryShader = VK_FALSE;
+    physical_device_features.tessellationShader = VK_FALSE;
+    physical_device_features.sampleRateShading = VK_FALSE;
+    physical_device_features.dualSrcBlend = VK_FALSE;
+    physical_device_features.logicOp = VK_FALSE;
+    physical_device_features.multiDrawIndirect = VK_FALSE;
+    physical_device_features.drawIndirectFirstInstance = VK_FALSE;
+    physical_device_features.depthClamp = VK_FALSE;
+    physical_device_features.depthBiasClamp = VK_FALSE;
+    physical_device_features.fillModeNonSolid = VK_TRUE;
+    physical_device_features.depthBounds = VK_FALSE;
+    physical_device_features.wideLines = VK_FALSE;
+    physical_device_features.largePoints = VK_FALSE;
+    physical_device_features.alphaToOne = VK_FALSE;
+    physical_device_features.multiViewport = VK_FALSE;
+    physical_device_features.samplerAnisotropy = VK_TRUE;
+    physical_device_features.textureCompressionETC2 = VK_FALSE;
+    physical_device_features.textureCompressionASTC_LDR = VK_FALSE;
+    physical_device_features.textureCompressionBC = VK_FALSE;
+    physical_device_features.occlusionQueryPrecise = VK_FALSE;
+    physical_device_features.pipelineStatisticsQuery = VK_FALSE;
+    physical_device_features.vertexPipelineStoresAndAtomics = VK_FALSE;
+    physical_device_features.fragmentStoresAndAtomics = VK_FALSE;
+    physical_device_features.shaderTessellationAndGeometryPointSize = VK_FALSE;
+    physical_device_features.shaderImageGatherExtended = VK_FALSE;
+    physical_device_features.shaderStorageImageExtendedFormats = VK_FALSE;
+    physical_device_features.shaderStorageImageMultisample = VK_FALSE;
+    physical_device_features.shaderStorageImageReadWithoutFormat = VK_FALSE;
+    physical_device_features.shaderStorageImageWriteWithoutFormat = VK_FALSE;
+    physical_device_features.shaderUniformBufferArrayDynamicIndexing = VK_FALSE;
+    physical_device_features.shaderSampledImageArrayDynamicIndexing = VK_FALSE;
+    physical_device_features.shaderStorageBufferArrayDynamicIndexing = VK_FALSE;
+    physical_device_features.shaderStorageImageArrayDynamicIndexing = VK_FALSE;
+    physical_device_features.shaderClipDistance = VK_FALSE;
+    physical_device_features.shaderCullDistance = VK_FALSE;
+    physical_device_features.shaderFloat64 = VK_FALSE;
+    physical_device_features.shaderInt64 = VK_FALSE;
+    physical_device_features.shaderInt16 = VK_FALSE;
+    physical_device_features.shaderResourceResidency = VK_FALSE;
+    physical_device_features.shaderResourceMinLod = VK_FALSE;
+    physical_device_features.sparseBinding = VK_FALSE;
+    physical_device_features.sparseResidencyBuffer = VK_FALSE;
+    physical_device_features.sparseResidencyImage2D = VK_FALSE;
+    physical_device_features.sparseResidencyImage3D = VK_FALSE;
+    physical_device_features.sparseResidency2Samples= VK_FALSE;
+    physical_device_features.sparseResidency4Samples = VK_FALSE;
+    physical_device_features.sparseResidency8Samples = VK_FALSE;
+    physical_device_features.sparseResidency16Samples = VK_FALSE;
+    physical_device_features.sparseResidencyAliased = VK_FALSE;
+    physical_device_features.variableMultisampleRate = VK_FALSE;
+    physical_device_features.inheritedQueries = VK_FALSE;
+
+    VkDeviceCreateInfo device_create_info;
+    device_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    device_create_info.pNext = nullptr;
+    device_create_info.flags = 0;
+    device_create_info.queueCreateInfoCount = static_cast<uint32_t>(queue_create_infos.size());
+    device_create_info.pQueueCreateInfos = queue_create_infos.data();
+    device_create_info.enabledLayerCount = 0;
+    device_create_info.ppEnabledLayerNames = nullptr;
+    device_create_info.enabledExtensionCount = static_cast<uint32_t>(enabled_extension_names.size());
+    device_create_info.ppEnabledExtensionNames = enabled_extension_names.data();
+    device_create_info.pEnabledFeatures = &physical_device_features;
+
+    VK_ASSERT(vkCreateDevice(vulkan_renderer->physical_device, &device_create_info, s_allocator, &vulkan_renderer->device));
+
+    vkGetDeviceQueue(vulkan_renderer->device, vulkan_renderer->graphics_queue_index, 0, &vulkan_renderer->graphics_queue);
+    if (vulkan_renderer->graphics_queue_index != vulkan_renderer->compute_queue_index)
+    {
+        vkGetDeviceQueue(vulkan_renderer->device, vulkan_renderer->compute_queue_index, 0, &vulkan_renderer->compute_queue);
+    }
+
+    return true;
+}
+
 VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window)
 {
     VulkanRenderer* vulkan_renderer = new VulkanRenderer();
+    bool init_failed = false;
 
-    if (!vulkan_renderer_init_instance(game_window, vulkan_renderer))
+    if (!init_failed && !vulkan_renderer_init_instance(game_window, vulkan_renderer))
     {
+        init_failed = true;
+    }
+
+    if (!init_failed && !vulkan_renderer_init_device(vulkan_renderer))
+    {
+        init_failed = true;
+    }
+
+    if (init_failed)
+    {
+        vulkan_renderer_destroy(vulkan_renderer);
         return nullptr;
     }
 
     return vulkan_renderer;
 }
 
-void vulkan_renderer_destory(VulkanRenderer* vulkan_renderer)
+void vulkan_renderer_destroy_instance(VulkanRenderer* vulkan_renderer)
 {
-    SDL_assert(vulkan_renderer);
-
 #ifdef VK_DEBUG
     if (vulkan_renderer->debug_report_callback_ext)
     {
@@ -227,6 +465,24 @@ void vulkan_renderer_destory(VulkanRenderer* vulkan_renderer)
     {
         vkDestroyInstance(vulkan_renderer->instance, s_allocator);
     }
+}
+
+void vulkan_renderer_destroy_device(VulkanRenderer* vulkan_renderer)
+{
+    if (vulkan_renderer->device)
+    {
+        vkDestroyDevice(vulkan_renderer->device, s_allocator);
+    }
+}
+
+void vulkan_renderer_destroy(VulkanRenderer* vulkan_renderer)
+{
+    SDL_assert(vulkan_renderer);
+
+    //vkDeviceWaitIdle(m_vulkanDevice);
+
+    vulkan_renderer_destroy_device(vulkan_renderer);
+    vulkan_renderer_destroy_instance(vulkan_renderer);
 
     delete vulkan_renderer;
 }
