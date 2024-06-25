@@ -18,4 +18,5 @@
  - [ ] Cars and characters should loop and be recycled so the scene runs forever
 
 ![benchmark image for what I want the final demo to look like, it has a lady standing in front of the camera on a street corner with people crossing the street and cars in the intersection](rainy_street_goal.jpg)
+
 *target for what the final scene should look like*
