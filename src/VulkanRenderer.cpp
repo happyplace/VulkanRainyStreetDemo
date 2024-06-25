@@ -560,6 +560,10 @@ bool vulkan_renderer_init_swapchain(GameWindow* game_window, VulkanRenderer* vul
     VK_ASSERT(vkGetSwapchainImagesKHR(vulkan_renderer->device, vulkan_renderer->swapchain, &vulkan_renderer->swapchain_image_count, swapchain_images.data()));
 
     vulkan_renderer->swapchain_image_views = new VkImageView[vulkan_renderer->swapchain_image_count];
+    for (uint32_t i = 0; i < vulkan_renderer->swapchain_image_count; ++i)
+    {
+        vulkan_renderer->swapchain_image_views[i] = VK_NULL_HANDLE;
+    }
 
     for (uint32_t i = 0; i < vulkan_renderer->swapchain_image_count; ++i)
     {
@@ -648,17 +652,24 @@ void vulkan_renderer_destroy_device(VulkanRenderer* vulkan_renderer)
 
 void vulkan_renderer_destroy_swapchain(VulkanRenderer* vulkan_renderer)
 {
-    uint32_t swapchain_images_count;
-    VK_ASSERT(vkGetSwapchainImagesKHR(vulkan_renderer->device, vulkan_renderer->swapchain, &swapchain_images_count, nullptr));
-
-    for (uint32_t i = 0; i < swapchain_images_count; ++i)
+    if (vulkan_renderer->swapchain_image_views)
     {
-        vkDestroyImageView(vulkan_renderer->device, vulkan_renderer->swapchain_image_views[i], s_allocator);
+        for (uint32_t i = 0; i < vulkan_renderer->swapchain_image_count; ++i)
+        {
+            VkImageView image_view = vulkan_renderer->swapchain_image_views[i];
+            if (image_view)
+            {
+                vkDestroyImageView(vulkan_renderer->device, image_view, s_allocator);
+            }
+        }
+
+        delete[] vulkan_renderer->swapchain_image_views;
     }
 
-    delete[] vulkan_renderer->swapchain_image_views;
-
-    vkDestroySwapchainKHR(vulkan_renderer->device, vulkan_renderer->swapchain, s_allocator);
+    if (vulkan_renderer->swapchain)
+    {
+        vkDestroySwapchainKHR(vulkan_renderer->device, vulkan_renderer->swapchain, s_allocator);
+    }
 }
 
 void vulkan_renderer_destroy(VulkanRenderer* vulkan_renderer)
