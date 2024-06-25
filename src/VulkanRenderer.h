@@ -1,7 +1,6 @@
 #ifndef VRSD_VulkanRenderer_h_
 #define VRSD_VulkanRenderer_h_
 
-#include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
 #define VK_DEBUG
@@ -21,6 +20,12 @@ struct VulkanRenderer
     VkDevice device = VK_NULL_HANDLE;
     VkQueue graphics_queue = VK_NULL_HANDLE;
     VkQueue compute_queue = VK_NULL_HANDLE;
+    uint32_t swapchain_image_count = 0;
+    VkSwapchainKHR swapchain = VK_NULL_HANDLE;
+    VkImageView* swapchain_image_views = nullptr;
+    uint32_t swapchain_width = 0;
+    uint32_t swapchain_height = 0;
+    VkFormat swapchain_format = VK_FORMAT_UNDEFINED;
 };
 
 VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window);

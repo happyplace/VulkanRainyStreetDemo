@@ -1,7 +1,11 @@
 #include "VulkanRenderer.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <vector>
+
+#include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan.h>
 
 #include <SDL_assert.h>
 #include <SDL_log.h>
@@ -420,6 +424,168 @@ bool vulkan_renderer_init_device(VulkanRenderer* vulkan_renderer)
     return true;
 }
 
+bool vulkan_renderer_init_swapchain(GameWindow* game_window, VulkanRenderer* vulkan_renderer)
+{
+    uint32_t surface_format_count;
+    VK_ASSERT(vkGetPhysicalDeviceSurfaceFormatsKHR(vulkan_renderer->physical_device, vulkan_renderer->window_surface, &surface_format_count, nullptr));
+
+    SDL_assert(surface_format_count > 0);
+
+    std::vector<VkSurfaceFormatKHR> surface_formats(surface_format_count);
+    VK_ASSERT(vkGetPhysicalDeviceSurfaceFormatsKHR(vulkan_renderer->physical_device, vulkan_renderer->window_surface, &surface_format_count, surface_formats.data()));
+
+    std::vector<VkFormat> preferred_surface_formats;
+    preferred_surface_formats.push_back(VK_FORMAT_R8G8B8A8_SRGB);
+    preferred_surface_formats.push_back(VK_FORMAT_B8G8R8A8_SRGB);
+    preferred_surface_formats.push_back(VK_FORMAT_A8B8G8R8_SRGB_PACK32);
+
+    VkSurfaceFormatKHR selected_surface_format;
+    int32_t selected_surface_format_index = -1;
+
+    for (VkSurfaceFormatKHR surface_format : surface_formats)
+    {
+        size_t loop_end_index = selected_surface_format_index >= 0 ? selected_surface_format_index : preferred_surface_formats.size();
+        for (size_t i = 0; i < loop_end_index; ++i)// VkFormat preferred_format : preferred_surface_formats)
+        {
+            if (surface_format.format == preferred_surface_formats[i])
+            {
+                selected_surface_format_index = i;
+                selected_surface_format = surface_format;
+                break;
+            }
+        }
+    }
+
+    if (selected_surface_format_index < 0)
+    {
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "no preferred swapchain format is supported by window surface, selecting first available one");
+        selected_surface_format = surface_formats[0];
+    }
+
+    VkSurfaceCapabilitiesKHR surface_capabilities;
+    VK_ASSERT(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vulkan_renderer->physical_device, vulkan_renderer->window_surface, &surface_capabilities));
+
+    VkExtent2D swapchain_size;
+    if (surface_capabilities.currentExtent.width == 0xffffffff)
+    {
+        int window_width = 0;
+        int window_height = 0;
+        SDL_Vulkan_GetDrawableSize(game_window->window, &window_width, &window_height);
+
+        swapchain_size.width = window_width;
+        swapchain_size.height = window_height;
+    }
+    else
+    {
+        swapchain_size = surface_capabilities.currentExtent;
+    }
+
+    vulkan_renderer->swapchain_image_count = std::max(1u, surface_capabilities.minImageCount);
+
+    VkSurfaceTransformFlagBitsKHR pre_transform;
+    if (surface_capabilities.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
+    {
+        pre_transform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+    }
+    else
+    {
+        pre_transform = surface_capabilities.currentTransform;
+    }
+
+    VkCompositeAlphaFlagBitsKHR composite_alpha_flag_bits = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    if (surface_capabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR)
+    {
+        composite_alpha_flag_bits = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    }
+    else if (surface_capabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR)
+    {
+        composite_alpha_flag_bits = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
+    }
+    else if (surface_capabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR)
+    {
+        composite_alpha_flag_bits = VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR;
+    }
+    else if (surface_capabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR)
+    {
+        composite_alpha_flag_bits = VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR;
+    }
+
+    VkSwapchainKHR prev_swapchain = vulkan_renderer->swapchain;
+
+    VkSwapchainCreateInfoKHR swapchain_create_info;
+    swapchain_create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    swapchain_create_info.pNext = nullptr;
+    swapchain_create_info.flags = 0;
+    swapchain_create_info.surface = vulkan_renderer->window_surface;
+    swapchain_create_info.minImageCount = vulkan_renderer->swapchain_image_count;
+    swapchain_create_info.imageFormat = selected_surface_format.format;
+    swapchain_create_info.imageColorSpace = selected_surface_format.colorSpace;
+    swapchain_create_info.imageExtent.width = swapchain_size.width;
+    swapchain_create_info.imageExtent.height = swapchain_size.height;
+    swapchain_create_info.imageArrayLayers = 1;
+    swapchain_create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    swapchain_create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    swapchain_create_info.queueFamilyIndexCount = 0;
+    swapchain_create_info.pQueueFamilyIndices = nullptr;
+    swapchain_create_info.preTransform = pre_transform;
+    swapchain_create_info.compositeAlpha = composite_alpha_flag_bits;
+    swapchain_create_info.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+    swapchain_create_info.clipped = true;
+    swapchain_create_info.oldSwapchain = prev_swapchain;
+
+    VK_ASSERT(vkCreateSwapchainKHR(vulkan_renderer->device, &swapchain_create_info, nullptr, &vulkan_renderer->swapchain));
+
+    if (prev_swapchain != VK_NULL_HANDLE)
+    {
+        uint32_t swapchain_images_count;
+        VK_ASSERT(vkGetSwapchainImagesKHR(vulkan_renderer->device, prev_swapchain, &swapchain_images_count, nullptr));
+
+        for (uint32_t i = 0; i < swapchain_images_count; ++i)
+        {
+            vkDestroyImageView(vulkan_renderer->device, vulkan_renderer->swapchain_image_views[i], s_allocator);
+        }
+
+        delete[] vulkan_renderer->swapchain_image_views;
+
+        vkDestroySwapchainKHR(vulkan_renderer->device, prev_swapchain, s_allocator);
+    }
+
+    vulkan_renderer->swapchain_width = swapchain_size.width;
+    vulkan_renderer->swapchain_height = swapchain_size.height;
+    vulkan_renderer->swapchain_format = selected_surface_format.format;
+
+    VK_ASSERT(vkGetSwapchainImagesKHR(vulkan_renderer->device, vulkan_renderer->swapchain, &vulkan_renderer->swapchain_image_count, nullptr));
+
+    std::vector<VkImage> swapchain_images(vulkan_renderer->swapchain_image_count);
+    VK_ASSERT(vkGetSwapchainImagesKHR(vulkan_renderer->device, vulkan_renderer->swapchain, &vulkan_renderer->swapchain_image_count, swapchain_images.data()));
+
+    vulkan_renderer->swapchain_image_views = new VkImageView[vulkan_renderer->swapchain_image_count];
+
+    for (uint32_t i = 0; i < vulkan_renderer->swapchain_image_count; ++i)
+    {
+        VkImageViewCreateInfo image_view_create_info;
+        image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        image_view_create_info.pNext = nullptr;
+        image_view_create_info.flags = 0;
+        image_view_create_info.image = swapchain_images[i];
+        image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        image_view_create_info.format = vulkan_renderer->swapchain_format;
+        image_view_create_info.components.r = VK_COMPONENT_SWIZZLE_R;
+        image_view_create_info.components.g = VK_COMPONENT_SWIZZLE_G;
+        image_view_create_info.components.b = VK_COMPONENT_SWIZZLE_B;
+        image_view_create_info.components.a = VK_COMPONENT_SWIZZLE_A;
+        image_view_create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        image_view_create_info.subresourceRange.baseMipLevel = 0;
+        image_view_create_info.subresourceRange.levelCount = 1;
+        image_view_create_info.subresourceRange.baseArrayLayer = 0;
+        image_view_create_info.subresourceRange.layerCount = 1;
+
+        VK_ASSERT(vkCreateImageView(vulkan_renderer->device, &image_view_create_info, nullptr, &vulkan_renderer->swapchain_image_views[i]));
+    }
+
+    return true;
+}
+
 VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window)
 {
     VulkanRenderer* vulkan_renderer = new VulkanRenderer();
@@ -431,6 +597,11 @@ VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window)
     }
 
     if (!init_failed && !vulkan_renderer_init_device(vulkan_renderer))
+    {
+        init_failed = true;
+    }
+
+    if (!init_failed && !vulkan_renderer_init_swapchain(game_window, vulkan_renderer))
     {
         init_failed = true;
     }
@@ -475,12 +646,28 @@ void vulkan_renderer_destroy_device(VulkanRenderer* vulkan_renderer)
     }
 }
 
+void vulkan_renderer_destroy_swapchain(VulkanRenderer* vulkan_renderer)
+{
+    uint32_t swapchain_images_count;
+    VK_ASSERT(vkGetSwapchainImagesKHR(vulkan_renderer->device, vulkan_renderer->swapchain, &swapchain_images_count, nullptr));
+
+    for (uint32_t i = 0; i < swapchain_images_count; ++i)
+    {
+        vkDestroyImageView(vulkan_renderer->device, vulkan_renderer->swapchain_image_views[i], s_allocator);
+    }
+
+    delete[] vulkan_renderer->swapchain_image_views;
+
+    vkDestroySwapchainKHR(vulkan_renderer->device, vulkan_renderer->swapchain, s_allocator);
+}
+
 void vulkan_renderer_destroy(VulkanRenderer* vulkan_renderer)
 {
     SDL_assert(vulkan_renderer);
 
     //vkDeviceWaitIdle(m_vulkanDevice);
 
+    vulkan_renderer_destroy_swapchain(vulkan_renderer);
     vulkan_renderer_destroy_device(vulkan_renderer);
     vulkan_renderer_destroy_instance(vulkan_renderer);
 
