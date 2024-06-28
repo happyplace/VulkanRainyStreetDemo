@@ -41,6 +41,33 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL vulkan_renderer_debug_callback(VkDebugRepo
 }
 #endif // VK_DEBUG
 
+bool vulkan_renderer_find_memory_by_flag_and_type(VulkanRenderer* vulkan_renderer, VkMemoryPropertyFlagBits memory_property_flag_bits, uint32_t memory_type_bits, uint32_t* out_memory_type_index)
+{
+    VkPhysicalDeviceMemoryProperties physical_device_memory_properties;
+    vkGetPhysicalDeviceMemoryProperties(vulkan_renderer->physical_device, &physical_device_memory_properties);
+
+    for (uint32_t i = 0; i < physical_device_memory_properties.memoryTypeCount; ++i)
+    {
+        if ((memory_type_bits & (1<<i)) != 0)
+        {
+            if ((physical_device_memory_properties.memoryTypes[i].propertyFlags & memory_property_flag_bits) != 0)
+            {
+                (*out_memory_type_index) = i;
+                return true;
+            }
+        }
+    }
+
+    SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not find given memory flag (0x%08x) and type (0x%08x))", memory_property_flag_bits, memory_type_bits);
+    return false;
+}
+
+bool vulkan_renderer_different_compute_and_graphics_queue(VulkanRenderer* vulkan_renderer)
+{
+    SDL_assert(vulkan_renderer);
+    return vulkan_renderer->graphics_queue_index != vulkan_renderer->compute_queue_index;
+}
+
 bool vulkan_renderer_init_instance(GameWindow* game_window, VulkanRenderer* vulkan_renderer)
 {
     uint32_t extension_count;
@@ -472,8 +499,8 @@ bool vulkan_renderer_init_swapchain(GameWindow* game_window, VulkanRenderer* vul
         int window_height = 0;
         SDL_Vulkan_GetDrawableSize(game_window->window, &window_width, &window_height);
 
-        swapchain_size.width = window_width;
-        swapchain_size.height = window_height;
+        swapchain_size.width = static_cast<uint32_t>(window_width);
+        swapchain_size.height = static_cast<uint32_t>(window_height);
     }
     else
     {
@@ -590,6 +617,87 @@ bool vulkan_renderer_init_swapchain(GameWindow* game_window, VulkanRenderer* vul
     return true;
 }
 
+bool vulkan_renderer_init_depth_stencil(VulkanRenderer* vulkan_renderer)
+{
+    VkImageCreateInfo image_create_info;
+    image_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    image_create_info.pNext = nullptr;
+    image_create_info.flags = 0;
+    image_create_info.imageType = VK_IMAGE_TYPE_2D;
+    image_create_info.format = VK_FORMAT_D32_SFLOAT_S8_UINT;
+    image_create_info.extent.width = vulkan_renderer->swapchain_width;
+    image_create_info.extent.height = vulkan_renderer->swapchain_height;
+    image_create_info.extent.depth = 1;
+    image_create_info.mipLevels = 1;
+    image_create_info.arrayLayers = 1;
+    image_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
+    image_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+    image_create_info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    image_create_info.queueFamilyIndexCount = 0;
+    image_create_info.pQueueFamilyIndices = nullptr;
+    image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+    VkResult result = vkCreateImage(vulkan_renderer->device, &image_create_info, s_allocator, &vulkan_renderer->depth_stencil_image);
+    if (result != VK_SUCCESS)
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "failed to create depth stencil image");
+        return false;
+    }
+
+    VkMemoryRequirements memory_requirements;
+    vkGetImageMemoryRequirements(vulkan_renderer->device, vulkan_renderer->depth_stencil_image, &memory_requirements);
+
+    VkMemoryAllocateInfo memory_allocate_info;
+    memory_allocate_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    memory_allocate_info.pNext = nullptr;
+    memory_allocate_info.allocationSize = memory_requirements.size;
+    if (!vulkan_renderer_find_memory_by_flag_and_type(vulkan_renderer, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memory_requirements.memoryTypeBits, &memory_allocate_info.memoryTypeIndex))
+    {
+        return false;
+    }
+
+    result = vkAllocateMemory(vulkan_renderer->device, &memory_allocate_info, s_allocator, &vulkan_renderer->depth_stencil_image_memory);
+    if (result != VK_SUCCESS)
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "failed to allocate memory for depth stencil image");
+        return false;
+    }
+
+    result = vkBindImageMemory(vulkan_renderer->device, vulkan_renderer->depth_stencil_image, vulkan_renderer->depth_stencil_image_memory, 0);
+    if (result != VK_SUCCESS)
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "failed to bind memory to image for depth stencil image");
+        return false;
+    }
+
+    VkImageViewCreateInfo image_view_create_info;
+    image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    image_view_create_info.pNext = nullptr;
+    image_view_create_info.flags = 0;
+    image_view_create_info.image = vulkan_renderer->depth_stencil_image;
+    image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    image_view_create_info.format = image_create_info.format;
+    image_view_create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+    image_view_create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+    image_view_create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+    image_view_create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+    image_view_create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+    image_view_create_info.subresourceRange.baseMipLevel = 0;
+    image_view_create_info.subresourceRange.levelCount = 1;
+    image_view_create_info.subresourceRange.baseArrayLayer = 0;
+    image_view_create_info.subresourceRange.layerCount = 1;
+
+    result = vkCreateImageView(vulkan_renderer->device, &image_view_create_info, s_allocator, &vulkan_renderer->depth_stencil_image_view);
+    if (result != VK_SUCCESS)
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "failed to create image view for depth stencil image view");
+        return false;
+    }
+
+    return true;
+}
+
 VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window)
 {
     VulkanRenderer* vulkan_renderer = new VulkanRenderer();
@@ -606,6 +714,11 @@ VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window)
     }
 
     if (!init_failed && !vulkan_renderer_init_swapchain(game_window, vulkan_renderer))
+    {
+        init_failed = true;
+    }
+
+    if (!init_failed && !vulkan_renderer_init_depth_stencil(vulkan_renderer))
     {
         init_failed = true;
     }
@@ -672,12 +785,31 @@ void vulkan_renderer_destroy_swapchain(VulkanRenderer* vulkan_renderer)
     }
 }
 
+void vulkan_renderer_destroy_depth_stencil(VulkanRenderer* vulkan_renderer)
+{
+    if (vulkan_renderer->depth_stencil_image_view)
+    {
+        vkDestroyImageView(vulkan_renderer->device, vulkan_renderer->depth_stencil_image_view, s_allocator);
+    }
+
+    if (vulkan_renderer->depth_stencil_image)
+    {
+        vkDestroyImage(vulkan_renderer->device, vulkan_renderer->depth_stencil_image, s_allocator);
+    }
+
+    if (vulkan_renderer->depth_stencil_image_memory)
+    {
+        vkFreeMemory(vulkan_renderer->device, vulkan_renderer->depth_stencil_image_memory, s_allocator);
+    }
+}
+
 void vulkan_renderer_destroy(VulkanRenderer* vulkan_renderer)
 {
     SDL_assert(vulkan_renderer);
 
     //vkDeviceWaitIdle(m_vulkanDevice);
 
+    vulkan_renderer_destroy_depth_stencil(vulkan_renderer);
     vulkan_renderer_destroy_swapchain(vulkan_renderer);
     vulkan_renderer_destroy_device(vulkan_renderer);
     vulkan_renderer_destroy_instance(vulkan_renderer);

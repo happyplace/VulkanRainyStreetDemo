@@ -26,9 +26,14 @@ struct VulkanRenderer
     uint32_t swapchain_width = 0;
     uint32_t swapchain_height = 0;
     VkFormat swapchain_format = VK_FORMAT_UNDEFINED;
+    VkImage depth_stencil_image = VK_NULL_HANDLE;
+    VkDeviceMemory depth_stencil_image_memory = VK_NULL_HANDLE;
+    VkImageView depth_stencil_image_view = VK_NULL_HANDLE;
 };
 
 VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window);
 void vulkan_renderer_destroy(VulkanRenderer* vulkan_renderer);
+
+bool vulkan_renderer_different_compute_and_graphics_queue(VulkanRenderer* vulkan_renderer);
 
 #endif // VRSD_VulkanRenderer_h_
