@@ -714,7 +714,7 @@ bool vulkan_renderer_init_render_pass(VulkanRenderer* vulkan_renderer)
         attachment_description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         attachment_description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         attachment_description.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        attachment_description.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
+        attachment_description.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
     }
 
     {
