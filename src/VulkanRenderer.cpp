@@ -776,6 +776,47 @@ bool vulkan_renderer_init_render_pass(VulkanRenderer* vulkan_renderer)
     return result == VK_SUCCESS;
 }
 
+bool vulkan_renderer_init_frame_buffers(VulkanRenderer* vulkan_renderer)
+{
+    std::array<VkImageView, 2> attachments;
+    attachments[1] = vulkan_renderer->depth_stencil_image_view;
+
+    VkFramebufferCreateInfo framebuffer_create_info;
+    framebuffer_create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    framebuffer_create_info.pNext = nullptr;
+    framebuffer_create_info.flags = 0;
+    framebuffer_create_info.renderPass = vulkan_renderer->render_pass;
+    framebuffer_create_info.attachmentCount = static_cast<uint32_t>(attachments.size());
+    framebuffer_create_info.pAttachments = attachments.data();
+    framebuffer_create_info.width = vulkan_renderer->swapchain_width;
+    framebuffer_create_info.height = vulkan_renderer->swapchain_height;
+    framebuffer_create_info.layers = 1;
+
+    if (vulkan_renderer->framebuffers)
+    {
+        delete[] vulkan_renderer->framebuffers;
+    }
+
+    vulkan_renderer->framebuffers = new VkFramebuffer[vulkan_renderer->swapchain_image_count];
+    for (uint32_t i = 0; i < vulkan_renderer->swapchain_image_count; ++i)
+    {
+        vulkan_renderer->framebuffers[i] = VK_NULL_HANDLE;
+    }
+
+    for (uint32_t i = 0; i < vulkan_renderer->swapchain_image_count; ++i)
+    {
+        attachments[0] = vulkan_renderer->swapchain_image_views[i];
+
+        VkResult result = vkCreateFramebuffer(vulkan_renderer->device, &framebuffer_create_info, s_allocator, &vulkan_renderer->framebuffers[i]);
+        if (result != VK_SUCCESS)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window)
 {
     VulkanRenderer* vulkan_renderer = new VulkanRenderer();
@@ -802,6 +843,11 @@ VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window)
     }
 
     if (!init_failed && !vulkan_renderer_init_render_pass(vulkan_renderer))
+    {
+        init_failed = true;
+    }
+
+    if (!init_failed && !vulkan_renderer_init_frame_buffers(vulkan_renderer))
     {
         init_failed = true;
     }
@@ -894,12 +940,29 @@ void vulkan_renderer_destroy_render_pass(VulkanRenderer* vulkan_renderer)
     }
 }
 
+void vulkan_renderer_destroy_framebuffers(VulkanRenderer* vulkan_renderer)
+{
+    if (vulkan_renderer->framebuffers)
+    {
+        for (uint32_t i = 0; i < vulkan_renderer->swapchain_image_count; ++i)
+        {
+            if (vulkan_renderer->framebuffers[i])
+            {
+                vkDestroyFramebuffer(vulkan_renderer->device, vulkan_renderer->framebuffers[i], s_allocator);
+            }
+        }
+
+        delete[] vulkan_renderer->framebuffers;
+    }
+}
+
 void vulkan_renderer_destroy(VulkanRenderer* vulkan_renderer)
 {
     SDL_assert(vulkan_renderer);
 
     //vkDeviceWaitIdle(m_vulkanDevice);
 
+    vulkan_renderer_destroy_framebuffers(vulkan_renderer);
     vulkan_renderer_destroy_render_pass(vulkan_renderer);
     vulkan_renderer_destroy_depth_stencil(vulkan_renderer);
     vulkan_renderer_destroy_swapchain(vulkan_renderer);

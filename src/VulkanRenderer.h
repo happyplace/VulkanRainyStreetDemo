@@ -30,6 +30,7 @@ struct VulkanRenderer
     VkDeviceMemory depth_stencil_image_memory = VK_NULL_HANDLE;
     VkImageView depth_stencil_image_view = VK_NULL_HANDLE;
     VkRenderPass render_pass = VK_NULL_HANDLE;
+    VkFramebuffer* framebuffers = nullptr;
 };
 
 VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window);
