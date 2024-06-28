@@ -557,7 +557,8 @@ bool vulkan_renderer_init_swapchain(GameWindow* game_window, VulkanRenderer* vul
     swapchain_create_info.pQueueFamilyIndices = nullptr;
     swapchain_create_info.preTransform = pre_transform;
     swapchain_create_info.compositeAlpha = composite_alpha_flag_bits;
-    swapchain_create_info.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+    constexpr bool vertical_sync_enabled = true;
+    swapchain_create_info.presentMode = vertical_sync_enabled ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR;
     swapchain_create_info.clipped = true;
     swapchain_create_info.oldSwapchain = prev_swapchain;
 
