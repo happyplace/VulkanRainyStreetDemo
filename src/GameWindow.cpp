@@ -1,4 +1,5 @@
 #include "GameWindow.h"
+#include "SDL_video.h"
 
 #include <SDL.h>
 #include <SDL_log.h>
@@ -51,10 +52,12 @@ void game_window_process_events(GameWindow* game_window)
         {
             game_window->quit_requested = true;
         }
+        else if (sdl_event.type == SDL_WINDOWEVENT_RESIZED)
+        {
+            if (sdl_event.window.event == SDL_WINDOWEVENT_RESIZED)
+            {
+                game_window->window_resized = true;
+            }
+        }
     }
-}
-
-bool game_window_is_quit_requested(GameWindow* game_window)
-{
-    return game_window->quit_requested;
 }

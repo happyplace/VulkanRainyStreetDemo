@@ -60,7 +60,7 @@ int main(int argc, char** argv)
     result = vkAllocateCommandBuffers(renderer->device, &command_buffer_allocate_info, &command_buffer);
     SDL_assert(result == VK_SUCCESS);
 
-    while (!game_window_is_quit_requested(window))
+    while (!window->quit_requested)
     {
         uint32_t swapchain_image_index;
         VkResult result = vkAcquireNextImageKHR(renderer->device, renderer->swapchain, UINT64_MAX, acquire_image, VK_NULL_HANDLE, &swapchain_image_index);
@@ -133,7 +133,15 @@ int main(int argc, char** argv)
         present_info.pResults = nullptr;
 
         result = vkQueuePresentKHR(renderer->graphics_queue, &present_info);
-        SDL_assert(result == VK_SUCCESS);
+        if (result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR)
+        {
+            window->window_resized = false;
+            vulkan_renderer_on_window_resized(window, renderer);
+        }
+        else if (result != VK_SUCCESS)
+        {
+            SDL_assert(result == VK_SUCCESS);
+        }
 
         result = vkWaitForFences(renderer->device, 1, &submit_fence, VK_TRUE, UINT64_MAX);
         SDL_assert(result == VK_SUCCESS);
@@ -141,6 +149,12 @@ int main(int argc, char** argv)
         SDL_assert(result == VK_SUCCESS);
 
         game_window_process_events(window);
+
+        if (window->window_resized)
+        {
+            window->window_resized = false;
+            vulkan_renderer_on_window_resized(window, renderer);
+        }
     }
 
     vkFreeCommandBuffers(renderer->device, command_pool, 1, &command_buffer);

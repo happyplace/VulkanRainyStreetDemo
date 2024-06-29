@@ -36,6 +36,8 @@ struct VulkanRenderer
 VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window);
 void vulkan_renderer_destroy(VulkanRenderer* vulkan_renderer);
 
-bool vulkan_renderer_different_compute_and_graphics_queue(VulkanRenderer* vulkan_renderer);
+void vulkan_renderer_on_window_resized(struct GameWindow* game_window, VulkanRenderer* vulkan_renderer);
+
+bool vulkan_renderer_different_compute_and_graphics_queue(struct GameWindow* game_window, VulkanRenderer* vulkan_renderer);
 
 #endif // VRSD_VulkanRenderer_h_

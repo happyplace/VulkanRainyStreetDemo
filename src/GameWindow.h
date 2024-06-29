@@ -7,12 +7,12 @@ struct GameWindow
 {
     SDL_Window* window = nullptr;
     bool quit_requested = false;
+    bool window_resized = false;
 };
 
 GameWindow* game_window_init();
 void game_window_destory(GameWindow* game_window);
 
 void game_window_process_events(GameWindow* game_window);
-bool game_window_is_quit_requested(GameWindow* game_window);
 
 #endif // VRSD_GameWindow_h_

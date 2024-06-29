@@ -907,6 +907,7 @@ void vulkan_renderer_destroy_swapchain(VulkanRenderer* vulkan_renderer)
         }
 
         delete[] vulkan_renderer->swapchain_image_views;
+        vulkan_renderer->swapchain_image_views = nullptr;
     }
 
     if (vulkan_renderer->swapchain)
@@ -954,6 +955,7 @@ void vulkan_renderer_destroy_framebuffers(VulkanRenderer* vulkan_renderer)
         }
 
         delete[] vulkan_renderer->framebuffers;
+        vulkan_renderer->framebuffers = nullptr;
     }
 }
 
@@ -961,7 +963,7 @@ void vulkan_renderer_destroy(VulkanRenderer* vulkan_renderer)
 {
     SDL_assert(vulkan_renderer);
 
-    //vkDeviceWaitIdle(m_vulkanDevice);
+    vkDeviceWaitIdle(vulkan_renderer->device);
 
     vulkan_renderer_destroy_framebuffers(vulkan_renderer);
     vulkan_renderer_destroy_render_pass(vulkan_renderer);
@@ -971,4 +973,26 @@ void vulkan_renderer_destroy(VulkanRenderer* vulkan_renderer)
     vulkan_renderer_destroy_instance(vulkan_renderer);
 
     delete vulkan_renderer;
+}
+
+void vulkan_renderer_on_window_resized(struct GameWindow* game_window, VulkanRenderer* vulkan_renderer)
+{
+    vkDeviceWaitIdle(vulkan_renderer->device);
+
+    if (!vulkan_renderer_init_swapchain(game_window, vulkan_renderer))
+    {
+        // abort
+    }
+
+    vulkan_renderer_destroy_depth_stencil(vulkan_renderer);
+    if (!vulkan_renderer_init_depth_stencil(vulkan_renderer))
+    {
+        // abort
+    }
+
+    vulkan_renderer_destroy_framebuffers(vulkan_renderer);
+    if (!vulkan_renderer_init_frame_buffers(vulkan_renderer))
+    {
+       // abort
+    }
 }
