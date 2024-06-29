@@ -17,13 +17,10 @@ add_definitions(-DNOMINMAX)
 include_directories(src)
 set(vrsd-src
     "src/main.cpp"
-    "src/Window.h"
-    "src/Window.cpp"
-    "src/Singleton.h"
-    "src/GameCommandParameters.h"
-    "src/GameCommandParameters.cpp"
-    "src/EntryJob.h"
-    "src/EntryJob.cpp"
+    "src/GameWindow.h"
+    "src/GameWindow.cpp"
+    "src/VulkanRenderer.h"
+    "src/VulkanRenderer.cpp"
 )
 
 if (${CMAKE_C_COMPILER_ID} STREQUAL "MSVC")
@@ -31,9 +28,6 @@ if (${CMAKE_C_COMPILER_ID} STREQUAL "MSVC")
 else()
     add_executable(VulkanRainyStreetDemo ${vrsd-src})
 endif()
-
-target_compile_features(VulkanRainyStreetDemo PRIVATE cxx_std_14)
-#set_property(TARGET VulkanRainyStreetDemo PROPERTY COMPILE_WARNING_AS_ERROR ON)
 
 if (${CMAKE_C_COMPILER_ID} STREQUAL "GNU")
     target_compile_options(VulkanRainyStreetDemo PRIVATE -Wall)
@@ -47,7 +41,6 @@ find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIR})
 target_link_libraries(VulkanRainyStreetDemo ${SDL2_LIBRARY} ${SDL2MAIN_LIBRARY})
 
-add_subdirectory("libs/FiberTaskingLib")
-include_directories("libs/FiberTaskingLib/include")
-target_link_libraries(VulkanRainyStreetDemo ftl)
-
+find_package(Vulkan REQUIRED)
+include_directories(${Vulkan_INCLUDE_DIRS})
+target_link_libraries(VulkanRainyStreetDemo ${Vulkan_LIBRARIES})
