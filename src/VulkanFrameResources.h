@@ -10,7 +10,7 @@ struct FrameResource
     VkFence submit_fence = VK_NULL_HANDLE;
     VkCommandPool command_pool = VK_NULL_HANDLE;
     VkCommandBuffer command_buffer = VK_NULL_HANDLE;
-    uint32_t swapchain_image_index;
+    uint32_t swapchain_image_index = 0;
 };
 
 struct VulkanFrameResources;
