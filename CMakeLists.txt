@@ -21,6 +21,8 @@ set(vrsd-src
     "src/GameWindow.cpp"
     "src/VulkanRenderer.h"
     "src/VulkanRenderer.cpp"
+    "src/VulkanFrameResources.h"
+    "src/VulkanFrameResources.cpp"
 )
 
 if (${CMAKE_C_COMPILER_ID} STREQUAL "MSVC")
