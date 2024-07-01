@@ -3,6 +3,7 @@
 #include "GameWindow.h"
 #include "VulkanRenderer.h"
 #include "VulkanFrameResources.h"
+#include "GameMap.h"
 
 #include <array>
 #include <vulkan/vulkan_core.h>
@@ -13,6 +14,7 @@ struct Game
     GameWindow* game_window = nullptr;
     VulkanRenderer* vulkan_renderer = nullptr;
     VulkanFrameResources* frame_resources = nullptr;
+    GameMap* game_map = nullptr;
 };
 
 void game_destroy(Game* game)
@@ -32,6 +34,11 @@ void game_destroy(Game* game)
     if (game->game_window)
     {
        game_window_destory(game->game_window);
+    }
+
+    if (game->game_map)
+    {
+        game_map_destroy(game->game_map);
     }
 
     delete game;
@@ -57,6 +64,13 @@ Game* game_init()
 
     game->frame_resources = vulkan_frame_resources_init(game->vulkan_renderer);
     if (game->frame_resources == nullptr)
+    {
+        game_destroy(game);
+        return nullptr;
+    }
+
+    game->game_map = game_map_init();
+    if (game->game_map == nullptr)
     {
         game_destroy(game);
         return nullptr;
