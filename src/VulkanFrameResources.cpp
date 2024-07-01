@@ -5,8 +5,6 @@
 
 #include "VulkanRenderer.h"
 
-constexpr uint32_t VULKAN_FRAME_RESOURCES_FRAME_RESOURCE_COUNT = 2;
-
 struct VulkanFrameResources
 {
     FrameResource frame_resources[VULKAN_FRAME_RESOURCES_FRAME_RESOURCE_COUNT];

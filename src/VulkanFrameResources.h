@@ -3,6 +3,8 @@
 
 #include <vulkan/vulkan_core.h>
 
+constexpr uint32_t VULKAN_FRAME_RESOURCES_FRAME_RESOURCE_COUNT = 2;
+
 struct FrameResource
 {
     VkSemaphore acquire_image = VK_NULL_HANDLE;
