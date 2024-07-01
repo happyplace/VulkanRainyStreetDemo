@@ -1,7 +1,8 @@
 # Rainy Street Demo
 
 ## Feature Updates:
- - [ ] Multiple frames in flight
+- [x] Multiple frames in flight
+- [x] ~~Fiber tasking library~~
 
 ## New Features:
  - [ ] Instancing
@@ -19,4 +20,4 @@
 
 ![benchmark image for what I want the final demo to look like, it has a lady standing in front of the camera on a street corner with people crossing the street and cars in the intersection](rainy_street_goal.jpg)
 
-*target for what the final scene should look like*
+> target for what the final scene should look like

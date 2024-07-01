@@ -13,6 +13,7 @@
 #include <SDL_vulkan.h>
 
 #include "GameWindow.h"
+#include "VulkanFrameResources.h" // needed for VULKAN_FRAME_RESOURCES_FRAME_RESOURCE_COUNT
 
 #define VK_ASSERT(X) SDL_assert(VK_SUCCESS == X)
 
@@ -508,7 +509,7 @@ bool vulkan_renderer_init_swapchain(GameWindow* game_window, VulkanRenderer* vul
         swapchain_size = surface_capabilities.currentExtent;
     }
 
-    vulkan_renderer->swapchain_image_count = std::max(1u, surface_capabilities.minImageCount);
+    vulkan_renderer->swapchain_image_count = std::max(VULKAN_FRAME_RESOURCES_FRAME_RESOURCE_COUNT, surface_capabilities.minImageCount);
 
     VkSurfaceTransformFlagBitsKHR pre_transform;
     if (surface_capabilities.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
@@ -821,39 +822,38 @@ bool vulkan_renderer_init_frame_buffers(VulkanRenderer* vulkan_renderer)
 VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window)
 {
     VulkanRenderer* vulkan_renderer = new VulkanRenderer();
-    bool init_failed = false;
 
-    if (!init_failed && !vulkan_renderer_init_instance(game_window, vulkan_renderer))
+    if (!vulkan_renderer_init_instance(game_window, vulkan_renderer))
     {
-        init_failed = true;
+        vulkan_renderer_destroy(vulkan_renderer);
+        return nullptr;
     }
 
-    if (!init_failed && !vulkan_renderer_init_device(vulkan_renderer))
+    if (!vulkan_renderer_init_device(vulkan_renderer))
     {
-        init_failed = true;
+        vulkan_renderer_destroy(vulkan_renderer);
+        return nullptr;
     }
 
-    if (!init_failed && !vulkan_renderer_init_swapchain(game_window, vulkan_renderer))
+    if (!vulkan_renderer_init_swapchain(game_window, vulkan_renderer))
     {
-        init_failed = true;
+        vulkan_renderer_destroy(vulkan_renderer);
+        return nullptr;
     }
 
-    if (!init_failed && !vulkan_renderer_init_depth_stencil(vulkan_renderer))
+    if (!vulkan_renderer_init_depth_stencil(vulkan_renderer))
     {
-        init_failed = true;
+        vulkan_renderer_destroy(vulkan_renderer);
+        return nullptr;
     }
 
-    if (!init_failed && !vulkan_renderer_init_render_pass(vulkan_renderer))
+    if (!vulkan_renderer_init_render_pass(vulkan_renderer))
     {
-        init_failed = true;
+        vulkan_renderer_destroy(vulkan_renderer);
+        return nullptr;
     }
 
-    if (!init_failed && !vulkan_renderer_init_frame_buffers(vulkan_renderer))
-    {
-        init_failed = true;
-    }
-
-    if (init_failed)
+    if (!vulkan_renderer_init_frame_buffers(vulkan_renderer))
     {
         vulkan_renderer_destroy(vulkan_renderer);
         return nullptr;
