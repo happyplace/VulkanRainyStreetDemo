@@ -1,7 +1,8 @@
 # Rainy Street Demo
 
 ## Feature Updates:
- - [x] Multiple frames in flight
+- [x] ~~Multiple frames in flight~~
+- [x] ~~Fiber tasking librar~~
 
 ## New Features:
  - [ ] Instancing
