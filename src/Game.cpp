@@ -1,16 +1,27 @@
 #include "Game.h"
 
+#include "SDL_assert.h"
+
 #include "GameWindow.h"
 #include "VulkanRenderer.h"
 #include "VulkanFrameResources.h"
 #include "GameMap.h"
 #include "GameFrameRender.h"
 
-#include "SDL_assert.h"
+#ifdef IMGUI_ENABLED
+#include "ImGuiRenderer.h"
+#endif // IMGUI_ENABLED
 
 void game_destroy(Game* game)
 {
     SDL_assert(game);
+
+#ifdef IMGUI_ENABLED
+    if (game->imgui_renderer)
+    {
+        imgui_renderer_destroy(game, game->imgui_renderer);
+    }
+#endif // IMGUI_ENABLED
 
     if (game->frame_resources)
     {
@@ -66,6 +77,15 @@ Game* game_init()
         game_destroy(game);
         return nullptr;
     }
+
+#ifdef IMGUI_ENABLED
+    game->imgui_renderer = imgui_renderer_init(game);
+    if (game->imgui_renderer == nullptr)
+    {
+        game_destroy(game);
+        return nullptr;
+    }
+#endif // IMGUI_ENABLED
 
     return game;
 }

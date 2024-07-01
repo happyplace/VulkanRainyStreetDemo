@@ -3,6 +3,11 @@
 
 #include <vulkan/vulkan_core.h>
 
+struct VkAllocationCallbacks;
+static VkAllocationCallbacks* s_allocator = nullptr;
+
+#define VK_ASSERT(X) SDL_assert(VK_SUCCESS == X)
+
 struct VulkanRenderer
 {
     VkInstance instance = VK_NULL_HANDLE;

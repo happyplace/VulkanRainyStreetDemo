@@ -15,7 +15,7 @@ endif()
 add_definitions(-DNOMINMAX)
 
 add_definitions(-DVK_DEBUG)
-//add_definitions(-DVK_PORTABILITY)
+#add_definitions(-DVK_PORTABILITY)
 add_definitions(-DIMGUI_ENABLED)
 
 include_directories(src)
@@ -35,6 +35,19 @@ set(vrsd-src
     "src/GameMapRenderer.cpp"
     "src/GameFrameRender.h"
     "src/GameFrameRender.cpp"
+    "src/ImGuiRenderer.h"
+    "src/ImGuiRenderer.cpp"
+)
+
+include_directories("external/imgui-docking")
+include_directories("external/imgui-docking/backends")
+set(vrsd-src ${vrsd-src}
+    "external/imgui-docking/imgui.cpp"
+    "external/imgui-docking/imgui_draw.cpp"
+    "external/imgui-docking/imgui_tables.cpp"
+    "external/imgui-docking/imgui_widgets.cpp"
+    "external/imgui-docking/backends/imgui_impl_vulkan.cpp"
+    "external/imgui-docking/backends/imgui_impl_sdl2.cpp"
 )
 
 if (${CMAKE_C_COMPILER_ID} STREQUAL "MSVC")
