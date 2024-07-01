@@ -5,7 +5,7 @@
 
 #include "VulkanRenderer.h"
 
-constexpr uint32_t VULKAN_FRAME_RESOURCES_FRAME_RESOURCE_COUNT = 100;
+constexpr uint32_t VULKAN_FRAME_RESOURCES_FRAME_RESOURCE_COUNT = 2;
 
 struct VulkanFrameResources
 {
@@ -55,7 +55,7 @@ VulkanFrameResources* vulkan_frame_resources_init(struct VulkanRenderer* vulkan_
         VkFenceCreateInfo fence_create_info;
         fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         fence_create_info.pNext = nullptr;
-        fence_create_info.flags = 0;
+        fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
         result = vkCreateFence(vulkan_renderer->device, &fence_create_info, nullptr, &frame_resource->submit_fence);
         if (result != VK_SUCCESS)
         {

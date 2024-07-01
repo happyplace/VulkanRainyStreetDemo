@@ -29,6 +29,8 @@ set(vrsd-src
     "src/GameMap.cpp"
     "src/GameMapRenderer.h"
     "src/GameMapRenderer.cpp"
+    "src/GameFrameRender.h"
+    "src/GameFrameRender.cpp"
 )
 
 if (${CMAKE_C_COMPILER_ID} STREQUAL "MSVC")
