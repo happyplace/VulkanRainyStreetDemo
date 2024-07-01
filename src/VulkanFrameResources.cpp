@@ -92,6 +92,8 @@ void vulkan_frame_resources_destroy(struct VulkanRenderer* vulkan_renderer, Vulk
     SDL_assert(vulkan_renderer);
     SDL_assert(vulkan_frame_resources);
 
+    vkDeviceWaitIdle(vulkan_renderer->device);
+
     for (uint32_t i = 0; i < VULKAN_FRAME_RESOURCES_FRAME_RESOURCE_COUNT; ++i)
     {
         FrameResource* frame_resource = &vulkan_frame_resources->frame_resources[i];
