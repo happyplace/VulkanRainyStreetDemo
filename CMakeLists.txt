@@ -14,6 +14,10 @@ endif()
 
 add_definitions(-DNOMINMAX)
 
+add_definitions(-DVK_DEBUG)
+//add_definitions(-DVK_PORTABILITY)
+add_definitions(-DIMGUI_ENABLED)
+
 include_directories(src)
 set(vrsd-src
     "src/main.cpp"

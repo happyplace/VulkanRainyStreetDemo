@@ -3,9 +3,6 @@
 
 #include <vulkan/vulkan_core.h>
 
-#define VK_DEBUG
-//#define VK_PORTABILITY
-
 struct VulkanRenderer
 {
     VkInstance instance = VK_NULL_HANDLE;
