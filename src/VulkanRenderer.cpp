@@ -821,39 +821,38 @@ bool vulkan_renderer_init_frame_buffers(VulkanRenderer* vulkan_renderer)
 VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window)
 {
     VulkanRenderer* vulkan_renderer = new VulkanRenderer();
-    bool init_failed = false;
 
-    if (!init_failed && !vulkan_renderer_init_instance(game_window, vulkan_renderer))
+    if (!vulkan_renderer_init_instance(game_window, vulkan_renderer))
     {
-        init_failed = true;
+        vulkan_renderer_destroy(vulkan_renderer);
+        return nullptr;
     }
 
-    if (!init_failed && !vulkan_renderer_init_device(vulkan_renderer))
+    if (!vulkan_renderer_init_device(vulkan_renderer))
     {
-        init_failed = true;
+        vulkan_renderer_destroy(vulkan_renderer);
+        return nullptr;
     }
 
-    if (!init_failed && !vulkan_renderer_init_swapchain(game_window, vulkan_renderer))
+    if (!vulkan_renderer_init_swapchain(game_window, vulkan_renderer))
     {
-        init_failed = true;
+        vulkan_renderer_destroy(vulkan_renderer);
+        return nullptr;
     }
 
-    if (!init_failed && !vulkan_renderer_init_depth_stencil(vulkan_renderer))
+    if (!vulkan_renderer_init_depth_stencil(vulkan_renderer))
     {
-        init_failed = true;
+        vulkan_renderer_destroy(vulkan_renderer);
+        return nullptr;
     }
 
-    if (!init_failed && !vulkan_renderer_init_render_pass(vulkan_renderer))
+    if (!vulkan_renderer_init_render_pass(vulkan_renderer))
     {
-        init_failed = true;
+        vulkan_renderer_destroy(vulkan_renderer);
+        return nullptr;
     }
 
-    if (!init_failed && !vulkan_renderer_init_frame_buffers(vulkan_renderer))
-    {
-        init_failed = true;
-    }
-
-    if (init_failed)
+    if (!vulkan_renderer_init_frame_buffers(vulkan_renderer))
     {
         vulkan_renderer_destroy(vulkan_renderer);
         return nullptr;
