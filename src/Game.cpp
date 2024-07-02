@@ -176,3 +176,8 @@ void game_imgui_stats_window(struct FrameResource* frame_resource)
     }
     ImGui::End();
 }
+
+void game_abort()
+{
+    SDL_assert(false);
+}

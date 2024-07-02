@@ -12,6 +12,7 @@
 #include <SDL_log.h>
 #include <SDL_vulkan.h>
 
+#include "Game.h"
 #include "GameWindow.h"
 #include "VulkanFrameResources.h" // needed for VULKAN_FRAME_RESOURCES_FRAME_RESOURCE_COUNT
 
@@ -977,18 +978,18 @@ void vulkan_renderer_on_window_resized(VulkanRenderer* vulkan_renderer, struct G
 
     if (!vulkan_renderer_init_swapchain(vulkan_renderer, game_window))
     {
-        // abort
+        game_abort();
     }
 
     vulkan_renderer_destroy_depth_stencil(vulkan_renderer);
     if (!vulkan_renderer_init_depth_stencil(vulkan_renderer))
     {
-        // abort
+        game_abort();
     }
 
     vulkan_renderer_destroy_framebuffers(vulkan_renderer);
     if (!vulkan_renderer_init_frame_buffers(vulkan_renderer))
     {
-       // abort
+       game_abort();
     }
 }
