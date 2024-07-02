@@ -6,6 +6,7 @@ struct VulkanRenderer;
 struct VulkanFrameResources;
 struct GameMap;
 struct ImGuiRenderer;
+struct GameTimer;
 
 struct Game
 {
@@ -14,6 +15,7 @@ struct Game
     VulkanFrameResources* frame_resources = nullptr;
     GameMap* game_map = nullptr;
     ImGuiRenderer* imgui_renderer = nullptr;
+    GameTimer* game_timer = nullptr;
 };
 
 int game_run(int argc, char** argv);

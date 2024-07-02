@@ -1,5 +1,6 @@
 #include "Game.h"
 
+#include "GameTimer.h"
 #include "SDL_assert.h"
 
 #include "imgui.h"
@@ -14,6 +15,11 @@
 void game_destroy(Game* game)
 {
     SDL_assert(game);
+
+    if (game->game_timer)
+    {
+        game_timer_destroy(game->game_timer);
+    }
 
 #ifdef IMGUI_ENABLED
     if (game->imgui_renderer)
@@ -86,6 +92,13 @@ Game* game_init()
     }
 #endif // IMGUI_ENABLED
 
+    game->game_timer = game_timer_init();
+    if (game->game_timer == nullptr)
+    {
+        game_destroy(game);
+        return nullptr;
+    }
+
     return game;
 }
 
@@ -106,6 +119,8 @@ int game_run(int argc, char** argv)
         return 1;
     }
 
+    game_timer_reset(game->game_timer);
+
     while (!game->game_window->quit_requested)
     {
         game_window_process_events(game->game_window);
@@ -114,6 +129,8 @@ int game_run(int argc, char** argv)
         {
             game_on_window_resized(game);
         }
+
+        game_timer_tick(game->game_timer);
 
         FrameResource* frame_resource = game_frame_render_begin_frame(game);
         game_frame_render_end_frame(frame_resource, game);
