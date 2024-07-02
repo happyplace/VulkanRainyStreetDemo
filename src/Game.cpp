@@ -133,6 +133,11 @@ int game_run(int argc, char** argv)
         game_timer_tick(game->game_timer);
 
         FrameResource* frame_resource = game_frame_render_begin_frame(game);
+
+        frame_resource->time.delta_time = game_timer_delta_time(game->game_timer);
+        frame_resource->time.total_time = game_timer_total_time(game->game_timer);
+        frame_resource->time.frame_number = game_timer_frame_count(game->game_timer);
+
         game_frame_render_end_frame(frame_resource, game);
 
 #ifdef IMGUI_ENABLED
@@ -146,12 +151,28 @@ int game_run(int argc, char** argv)
     return 0;
 }
 
-void game_imgui_stats_window()
+void game_imgui_stats_window(struct FrameResource* frame_resource)
 {
-    bool is_opened = true;
-    if (ImGui::Begin("Game Stats", &is_opened, ImGuiWindowFlags_None))
+    constexpr double time_span_duration = 1.0;
+
+    static double elapsed_time = 0.0;
+    static uint32_t elapsed_frame_count = 0;
+
+    static uint32_t frame_count = 0;
+
+    elapsed_frame_count++;
+    elapsed_time += frame_resource->time.delta_time;
+    if (elapsed_time >= time_span_duration)
     {
-        ImGui::Text("andrew was here");
+        frame_count = elapsed_frame_count;
+
+        elapsed_time -= time_span_duration;
+        elapsed_frame_count = 0;
+    }
+
+    if (ImGui::Begin("Game Stats", nullptr, ImGuiWindowFlags_None))
+    {
+        ImGui::Text("FPS: %u", frame_count);
     }
     ImGui::End();
 }

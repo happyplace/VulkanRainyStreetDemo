@@ -259,9 +259,9 @@ void imgui_renderer_on_resize(ImGuiRenderer* imgui_renderer, struct VulkanRender
     }
 }
 
-void imgui_renderer_draw_windows(Game* game)
+void imgui_renderer_draw_windows(Game* game, FrameResource* frame_resource)
 {
-    game_imgui_stats_window();
+    game_imgui_stats_window(frame_resource);
 }
 
 void imgui_renderer_draw(ImGuiRenderer* imgui_renderer, struct Game* game, struct FrameResource* frame_resource)
@@ -270,7 +270,7 @@ void imgui_renderer_draw(ImGuiRenderer* imgui_renderer, struct Game* game, struc
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 
-    imgui_renderer_draw_windows(game);
+    imgui_renderer_draw_windows(game, frame_resource);
 
     ImGui::Render();
     ImDrawData* draw_data = ImGui::GetDrawData();
