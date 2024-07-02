@@ -6,7 +6,6 @@
 #include <SDL_assert.h>
 
 #include "Game.h"
-#include "GameWindow.h"
 #include "VulkanFrameResources.h"
 #include "VulkanRenderer.h"
 
@@ -78,7 +77,10 @@ FrameResource* game_frame_render_begin_frame(Game* game)
 void game_frame_render_end_frame(Game* game, FrameResource* frame_resource)
 {
     vkCmdEndRenderPass(frame_resource->command_buffer);
+}
 
+void game_frame_render_submit(Game* game, FrameResource* frame_resource)
+{
     VkResult result = vkEndCommandBuffer(frame_resource->command_buffer);
     SDL_assert(result == VK_SUCCESS);
 
@@ -93,6 +95,7 @@ void game_frame_render_end_frame(Game* game, FrameResource* frame_resource)
     submit_info.pCommandBuffers = &frame_resource->command_buffer;
     submit_info.signalSemaphoreCount = 1;
     submit_info.pSignalSemaphores = &frame_resource->release_image;
+
     result = vkQueueSubmit(game->vulkan_renderer->graphics_queue, 1, &submit_info, frame_resource->submit_fence);
     SDL_assert(result == VK_SUCCESS);
 
@@ -109,8 +112,7 @@ void game_frame_render_end_frame(Game* game, FrameResource* frame_resource)
     result = vkQueuePresentKHR(game->vulkan_renderer->graphics_queue, &present_info);
     if (result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR)
     {
-        game->game_window->window_resized = false;
-        vulkan_renderer_on_window_resized(game->game_window, game->vulkan_renderer);
+        game_on_window_resized(game);
     }
     else if (result != VK_SUCCESS)
     {

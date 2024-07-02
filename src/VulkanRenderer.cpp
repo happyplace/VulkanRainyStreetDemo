@@ -15,10 +15,6 @@
 #include "GameWindow.h"
 #include "VulkanFrameResources.h" // needed for VULKAN_FRAME_RESOURCES_FRAME_RESOURCE_COUNT
 
-#define VK_ASSERT(X) SDL_assert(VK_SUCCESS == X)
-
-static VkAllocationCallbacks* s_allocator = nullptr;
-
 #ifdef VK_DEBUG
 static VKAPI_ATTR VkBool32 VKAPI_CALL vulkan_renderer_debug_callback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT /*type*/,
     uint64_t /*object*/, size_t /*location*/, int32_t /*message_code*/, const char* layer_prefix, const char* message, void* /*user_data*/)

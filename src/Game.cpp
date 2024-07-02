@@ -1,16 +1,26 @@
 #include "Game.h"
 
+#include "SDL_assert.h"
+
+#include "imgui.h"
+
 #include "GameWindow.h"
 #include "VulkanRenderer.h"
 #include "VulkanFrameResources.h"
 #include "GameMap.h"
 #include "GameFrameRender.h"
-
-#include "SDL_assert.h"
+#include "ImGuiRenderer.h"
 
 void game_destroy(Game* game)
 {
     SDL_assert(game);
+
+#ifdef IMGUI_ENABLED
+    if (game->imgui_renderer)
+    {
+        imgui_renderer_destroy(game, game->imgui_renderer);
+    }
+#endif // IMGUI_ENABLED
 
     if (game->frame_resources)
     {
@@ -67,7 +77,25 @@ Game* game_init()
         return nullptr;
     }
 
+#ifdef IMGUI_ENABLED
+    game->imgui_renderer = imgui_renderer_init(game);
+    if (game->imgui_renderer == nullptr)
+    {
+        game_destroy(game);
+        return nullptr;
+    }
+#endif // IMGUI_ENABLED
+
     return game;
+}
+
+void game_on_window_resized(Game* game)
+{
+    game->game_window->window_resized = false;
+    vulkan_renderer_on_window_resized(game->game_window, game->vulkan_renderer);
+#ifdef IMGUI_ENABLED
+    imgui_renderer_on_resize(game->vulkan_renderer, game->imgui_renderer);
+#endif // IMGUI_ENABLED
 }
 
 int game_run(int argc, char** argv)
@@ -80,18 +108,33 @@ int game_run(int argc, char** argv)
 
     while (!game->game_window->quit_requested)
     {
-        FrameResource* frame_resource = game_frame_render_begin_frame(game);
-        game_frame_render_end_frame(game, frame_resource);
+        game_window_process_events(game->game_window);
 
         if (game->game_window->window_resized)
         {
-            game->game_window->window_resized = false;
-            vulkan_renderer_on_window_resized(game->game_window, game->vulkan_renderer);
+            game_on_window_resized(game);
         }
 
-        game_window_process_events(game->game_window);
+        FrameResource* frame_resource = game_frame_render_begin_frame(game);
+        game_frame_render_end_frame(game, frame_resource);
+
+#ifdef IMGUI_ENABLED
+        imgui_renderer_draw(game, frame_resource, game->imgui_renderer);
+#endif // IMGUI_ENABLED
+
+        game_frame_render_submit(game, frame_resource);
     }
 
     game_destroy(game);
     return 0;
+}
+
+void game_imgui_stats_window()
+{
+    bool is_opened = true;
+    if (ImGui::Begin("Game Stats", &is_opened, ImGuiWindowFlags_None))
+    {
+        ImGui::Text("andrew was here");
+    }
+    ImGui::End();
 }

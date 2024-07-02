@@ -3,8 +3,10 @@
 
 #include <vulkan/vulkan_core.h>
 
-#define VK_DEBUG
-//#define VK_PORTABILITY
+struct VkAllocationCallbacks;
+static VkAllocationCallbacks* s_allocator = nullptr;
+
+#define VK_ASSERT(X) SDL_assert(VK_SUCCESS == X)
 
 struct VulkanRenderer
 {
