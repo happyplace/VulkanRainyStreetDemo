@@ -58,7 +58,7 @@ double game_timer_delta_time(GameTimer* game_timer)
     return game_timer->delta_time;
 }
 
-uint64_t game_timer_frame_Count(GameTimer* game_timer)
+uint64_t game_timer_frame_count(GameTimer* game_timer)
 {
     return game_timer->frame_count;
 }

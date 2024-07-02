@@ -10,7 +10,7 @@ void game_timer_destroy(GameTimer* game_timer);
 
 double game_timer_total_time(GameTimer* game_timer);
 double game_timer_delta_time(GameTimer* game_timer);
-uint64_t game_timer_frame_Count(GameTimer* game_timer);
+uint64_t game_timer_frame_count(GameTimer* game_timer);
 
 void game_timer_tick(GameTimer* game_timer);
 
