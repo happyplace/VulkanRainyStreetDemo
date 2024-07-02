@@ -90,6 +90,15 @@ Game* game_init()
     return game;
 }
 
+void game_on_window_resized(Game* game)
+{
+    game->game_window->window_resized = false;
+    vulkan_renderer_on_window_resized(game->game_window, game->vulkan_renderer);
+#ifdef IMGUI_ENABLED
+    imgui_renderer_on_resize(game->vulkan_renderer, game->imgui_renderer);
+#endif // IMGUI_ENABLED
+}
+
 int game_run(int argc, char** argv)
 {
     Game* game = game_init();
@@ -100,16 +109,21 @@ int game_run(int argc, char** argv)
 
     while (!game->game_window->quit_requested)
     {
-        FrameResource* frame_resource = game_frame_render_begin_frame(game);
-        game_frame_render_end_frame(game, frame_resource);
+        game_window_process_events(game->game_window);
 
         if (game->game_window->window_resized)
         {
-            game->game_window->window_resized = false;
-            vulkan_renderer_on_window_resized(game->game_window, game->vulkan_renderer);
+            game_on_window_resized(game);
         }
 
-        game_window_process_events(game->game_window);
+        FrameResource* frame_resource = game_frame_render_begin_frame(game);
+        game_frame_render_end_frame(game, frame_resource);
+
+#ifdef IMGUI_ENABLED
+        imgui_renderer_draw(game->vulkan_renderer, frame_resource, game->imgui_renderer);
+#endif // IMGUI_ENABLED
+
+        game_frame_render_submit(game, frame_resource);
     }
 
     game_destroy(game);

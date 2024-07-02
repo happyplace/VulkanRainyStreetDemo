@@ -9,5 +9,6 @@ FrameResource* game_frame_render_begin_frame(Game* game);
 
 // submit frame resource to GPU
 void game_frame_render_end_frame(Game* game, FrameResource* frame_resource);
+void game_frame_render_submit(Game* game, FrameResource* frame_resource);
 
 #endif // VRSD_GameFrameRender_h_

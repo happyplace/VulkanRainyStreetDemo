@@ -15,11 +15,13 @@
 #include "Game.h"
 #include "GameWindow.h"
 #include "VulkanRenderer.h"
+#include "VulkanFrameResources.h"
 
 struct ImGuiRenderer
 {
     VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
     VkRenderPass render_pass = VK_NULL_HANDLE;
+    VkFramebuffer* framebuffers = nullptr;
 };
 
 void imgui_renderer_init_assert(VkResult result)
@@ -27,11 +29,34 @@ void imgui_renderer_init_assert(VkResult result)
     VK_ASSERT(result);
 }
 
+void imgui_renderer_destroy_framebuffers(struct VulkanRenderer* vulkan_renderer, ImGuiRenderer* imgui_renderer)
+{
+    if (imgui_renderer->framebuffers)
+    {
+        for (uint32_t i = 0; i < vulkan_renderer->swapchain_image_count; ++i)
+        {
+            if (imgui_renderer->framebuffers[i])
+            {
+                vkDestroyFramebuffer(vulkan_renderer->device, imgui_renderer->framebuffers[i], s_allocator);
+            }
+        }
+        delete[] imgui_renderer->framebuffers;
+        imgui_renderer->framebuffers = nullptr;
+    }
+}
+
 void imgui_renderer_destroy(struct Game* game, ImGuiRenderer* imgui_renderer)
 {
     SDL_assert(imgui_renderer);
+    SDL_assert(game);
 
     vkDeviceWaitIdle(game->vulkan_renderer->device);
+
+    imgui_renderer_destroy_framebuffers(game->vulkan_renderer, imgui_renderer);
+
+    ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplSDL2_Shutdown();
+    ImGui::DestroyContext();
 
     if (imgui_renderer->descriptor_pool)
     {
@@ -42,10 +67,6 @@ void imgui_renderer_destroy(struct Game* game, ImGuiRenderer* imgui_renderer)
     {
         vkDestroyRenderPass(game->vulkan_renderer->device, imgui_renderer->render_pass, s_allocator);
     }
-
-    ImGui_ImplVulkan_Shutdown();
-    ImGui_ImplSDL2_Shutdown();
-    ImGui::DestroyContext();
 
     delete imgui_renderer;
 }
@@ -198,7 +219,84 @@ ImGuiRenderer* imgui_renderer_init(struct Game* game)
     //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
     //IM_ASSERT(font != nullptr);
 
+    imgui_renderer_on_resize(game->vulkan_renderer, imgui_renderer);
+
     return imgui_renderer;
+}
+
+bool imgui_renderer_on_sdl_event(SDL_Event* sdl_event)
+{
+    return ImGui_ImplSDL2_ProcessEvent(sdl_event);
+}
+
+void imgui_renderer_on_resize(struct VulkanRenderer* vulkan_renderer, ImGuiRenderer* imgui_renderer)
+{
+    imgui_renderer_destroy_framebuffers(vulkan_renderer, imgui_renderer);
+
+    imgui_renderer->framebuffers = new VkFramebuffer[vulkan_renderer->swapchain_image_count];
+    for (uint32_t i = 0; i < vulkan_renderer->swapchain_image_count; ++i)
+    {
+        imgui_renderer->framebuffers[i] = VK_NULL_HANDLE;
+    }
+
+    VkImageView attachment;
+
+    VkFramebufferCreateInfo framebuffer_create_info;
+    framebuffer_create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    framebuffer_create_info.pNext = nullptr;
+    framebuffer_create_info.flags = 0;
+    framebuffer_create_info.renderPass = imgui_renderer->render_pass;
+    framebuffer_create_info.attachmentCount = 1;
+    framebuffer_create_info.pAttachments = &attachment;
+    framebuffer_create_info.width = vulkan_renderer->swapchain_width;
+    framebuffer_create_info.height = vulkan_renderer->swapchain_height;
+    framebuffer_create_info.layers = 1;
+
+    for (uint32_t i = 0; i < vulkan_renderer->swapchain_image_count; ++i)
+    {
+        attachment = vulkan_renderer->swapchain_image_views[i];
+        VK_ASSERT(vkCreateFramebuffer(vulkan_renderer->device, &framebuffer_create_info, s_allocator, &imgui_renderer->framebuffers[i]));
+    }
+}
+
+#include "imgui.h"
+
+void imgui_renderer_draw_windows(ImGuiRenderer* imgui_renderer)
+{
+    bool fam = true;
+    ImGui::Begin("My First Tool", &fam, ImGuiWindowFlags_None);
+    ImGui::Text("andre was here");
+    ImGui::End();
+}
+
+void imgui_renderer_draw(struct VulkanRenderer* vulkan_renderer, struct FrameResource* frame_resource, ImGuiRenderer* imgui_renderer)
+{
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplSDL2_NewFrame();
+    ImGui::NewFrame();
+
+    imgui_renderer_draw_windows(imgui_renderer);
+
+    ImGui::Render();
+    ImDrawData* draw_data = ImGui::GetDrawData();
+
+    VkRenderPassBeginInfo render_pass_begin_info;
+    render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    render_pass_begin_info.pNext = nullptr;
+    render_pass_begin_info.renderPass = imgui_renderer->render_pass;
+    render_pass_begin_info.framebuffer = imgui_renderer->framebuffers[frame_resource->swapchain_image_index];
+    render_pass_begin_info.renderArea.offset.x = 0;
+    render_pass_begin_info.renderArea.offset.y = 0;
+    render_pass_begin_info.renderArea.extent.width = vulkan_renderer->swapchain_width;
+    render_pass_begin_info.renderArea.extent.height = vulkan_renderer->swapchain_height;
+    render_pass_begin_info.clearValueCount = 0;
+    render_pass_begin_info.pClearValues = nullptr;
+
+    vkCmdBeginRenderPass(frame_resource->command_buffer, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+
+    ImGui_ImplVulkan_RenderDrawData(draw_data, frame_resource->command_buffer);
+
+    vkCmdEndRenderPass(frame_resource->command_buffer);
 }
 
 #endif // IMGUI_ENABLED

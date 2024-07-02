@@ -18,4 +18,6 @@ struct Game
 
 int game_run(int argc, char** argv);
 
+void game_on_window_resized(Game* game);
+
 #endif // VRSD_Game_h_
