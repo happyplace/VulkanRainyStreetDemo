@@ -2,15 +2,14 @@
 
 #include "SDL_assert.h"
 
+#include "imgui.h"
+
 #include "GameWindow.h"
 #include "VulkanRenderer.h"
 #include "VulkanFrameResources.h"
 #include "GameMap.h"
 #include "GameFrameRender.h"
-
-#ifdef IMGUI_ENABLED
 #include "ImGuiRenderer.h"
-#endif // IMGUI_ENABLED
 
 void game_destroy(Game* game)
 {
@@ -120,7 +119,7 @@ int game_run(int argc, char** argv)
         game_frame_render_end_frame(game, frame_resource);
 
 #ifdef IMGUI_ENABLED
-        imgui_renderer_draw(game->vulkan_renderer, frame_resource, game->imgui_renderer);
+        imgui_renderer_draw(game, frame_resource, game->imgui_renderer);
 #endif // IMGUI_ENABLED
 
         game_frame_render_submit(game, frame_resource);
@@ -128,4 +127,14 @@ int game_run(int argc, char** argv)
 
     game_destroy(game);
     return 0;
+}
+
+void game_imgui_stats_window()
+{
+    bool is_opened = true;
+    if (ImGui::Begin("Game Stats", &is_opened, ImGuiWindowFlags_None))
+    {
+        ImGui::Text("andrew was here");
+    }
+    ImGui::End();
 }

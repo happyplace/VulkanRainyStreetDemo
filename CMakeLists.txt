@@ -6,6 +6,8 @@ cmake_policy(SET CMP0025 NEW)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
+set(ENABLE_IMGUI ON)
+
 project(VulkanRainyStreetDemo)
 
 if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -16,7 +18,9 @@ add_definitions(-DNOMINMAX)
 
 add_definitions(-DVK_DEBUG)
 #add_definitions(-DVK_PORTABILITY)
-add_definitions(-DIMGUI_ENABLED)
+if (${ENABLE_IMGUI})
+    add_definitions(-DIMGUI_ENABLED)
+endif()
 
 include_directories(src)
 set(vrsd-src
@@ -41,14 +45,16 @@ set(vrsd-src
 
 include_directories("external/imgui-docking")
 include_directories("external/imgui-docking/backends")
-set(vrsd-src ${vrsd-src}
-    "external/imgui-docking/imgui.cpp"
-    "external/imgui-docking/imgui_draw.cpp"
-    "external/imgui-docking/imgui_tables.cpp"
-    "external/imgui-docking/imgui_widgets.cpp"
-    "external/imgui-docking/backends/imgui_impl_vulkan.cpp"
-    "external/imgui-docking/backends/imgui_impl_sdl2.cpp"
-)
+if (${ENABLE_IMGUI})
+    set(vrsd-src ${vrsd-src}
+        "external/imgui-docking/imgui.cpp"
+        "external/imgui-docking/imgui_draw.cpp"
+        "external/imgui-docking/imgui_tables.cpp"
+        "external/imgui-docking/imgui_widgets.cpp"
+        "external/imgui-docking/backends/imgui_impl_vulkan.cpp"
+        "external/imgui-docking/backends/imgui_impl_sdl2.cpp"
+    )
+endif()
 
 if (${CMAKE_C_COMPILER_ID} STREQUAL "MSVC")
     add_executable(VulkanRainyStreetDemo WIN32 ${vrsd-src})

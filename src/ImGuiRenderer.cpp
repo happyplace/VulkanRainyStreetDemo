@@ -259,23 +259,18 @@ void imgui_renderer_on_resize(struct VulkanRenderer* vulkan_renderer, ImGuiRende
     }
 }
 
-#include "imgui.h"
-
-void imgui_renderer_draw_windows(ImGuiRenderer* imgui_renderer)
+void imgui_renderer_draw_windows(Game* game)
 {
-    bool fam = true;
-    ImGui::Begin("My First Tool", &fam, ImGuiWindowFlags_None);
-    ImGui::Text("andre was here");
-    ImGui::End();
+    game_imgui_stats_window();
 }
 
-void imgui_renderer_draw(struct VulkanRenderer* vulkan_renderer, struct FrameResource* frame_resource, ImGuiRenderer* imgui_renderer)
+void imgui_renderer_draw(struct Game* game, struct FrameResource* frame_resource, ImGuiRenderer* imgui_renderer)
 {
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 
-    imgui_renderer_draw_windows(imgui_renderer);
+    imgui_renderer_draw_windows(game);
 
     ImGui::Render();
     ImDrawData* draw_data = ImGui::GetDrawData();
@@ -287,8 +282,8 @@ void imgui_renderer_draw(struct VulkanRenderer* vulkan_renderer, struct FrameRes
     render_pass_begin_info.framebuffer = imgui_renderer->framebuffers[frame_resource->swapchain_image_index];
     render_pass_begin_info.renderArea.offset.x = 0;
     render_pass_begin_info.renderArea.offset.y = 0;
-    render_pass_begin_info.renderArea.extent.width = vulkan_renderer->swapchain_width;
-    render_pass_begin_info.renderArea.extent.height = vulkan_renderer->swapchain_height;
+    render_pass_begin_info.renderArea.extent.width = game->vulkan_renderer->swapchain_width;
+    render_pass_begin_info.renderArea.extent.height = game->vulkan_renderer->swapchain_height;
     render_pass_begin_info.clearValueCount = 0;
     render_pass_begin_info.pClearValues = nullptr;
 
