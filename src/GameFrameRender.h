@@ -8,7 +8,7 @@ struct FrameResource;
 FrameResource* game_frame_render_begin_frame(Game* game);
 
 // submit frame resource to GPU
-void game_frame_render_end_frame(Game* game, FrameResource* frame_resource);
-void game_frame_render_submit(Game* game, FrameResource* frame_resource);
+void game_frame_render_end_frame(FrameResource* frame_resource, Game* game);
+void game_frame_render_submit(FrameResource* frame_resource, Game* game);
 
 #endif // VRSD_GameFrameRender_h_

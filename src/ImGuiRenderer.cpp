@@ -29,7 +29,7 @@ void imgui_renderer_init_assert(VkResult result)
     VK_ASSERT(result);
 }
 
-void imgui_renderer_destroy_framebuffers(struct VulkanRenderer* vulkan_renderer, ImGuiRenderer* imgui_renderer)
+void imgui_renderer_destroy_framebuffers(ImGuiRenderer* imgui_renderer, struct VulkanRenderer* vulkan_renderer)
 {
     if (imgui_renderer->framebuffers)
     {
@@ -45,14 +45,14 @@ void imgui_renderer_destroy_framebuffers(struct VulkanRenderer* vulkan_renderer,
     }
 }
 
-void imgui_renderer_destroy(struct Game* game, ImGuiRenderer* imgui_renderer)
+void imgui_renderer_destroy(ImGuiRenderer* imgui_renderer, struct Game* game)
 {
     SDL_assert(imgui_renderer);
     SDL_assert(game);
 
     vkDeviceWaitIdle(game->vulkan_renderer->device);
 
-    imgui_renderer_destroy_framebuffers(game->vulkan_renderer, imgui_renderer);
+    imgui_renderer_destroy_framebuffers(imgui_renderer, game->vulkan_renderer);
 
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplSDL2_Shutdown();
@@ -86,7 +86,7 @@ ImGuiRenderer* imgui_renderer_init(struct Game* game)
 
     if (!ImGui_ImplSDL2_InitForVulkan(game->game_window->window))
     {
-        imgui_renderer_destroy(game, imgui_renderer);
+        imgui_renderer_destroy(imgui_renderer, game);
         return nullptr;
     }
 
@@ -106,7 +106,7 @@ ImGuiRenderer* imgui_renderer_init(struct Game* game)
     {
         VK_ASSERT(result);
 
-        imgui_renderer_destroy(game, imgui_renderer);
+        imgui_renderer_destroy(imgui_renderer, game);
         return nullptr;
     }
 
@@ -162,7 +162,7 @@ ImGuiRenderer* imgui_renderer_init(struct Game* game)
     {
         VK_ASSERT(result);
 
-        imgui_renderer_destroy(game, imgui_renderer);
+        imgui_renderer_destroy(imgui_renderer, game);
         return nullptr;
     }
 
@@ -197,7 +197,7 @@ ImGuiRenderer* imgui_renderer_init(struct Game* game)
     {
         SDL_assert(false);
 
-        imgui_renderer_destroy(game, imgui_renderer);
+        imgui_renderer_destroy(imgui_renderer, game);
         return nullptr;
     }
 
@@ -219,7 +219,7 @@ ImGuiRenderer* imgui_renderer_init(struct Game* game)
     //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
     //IM_ASSERT(font != nullptr);
 
-    imgui_renderer_on_resize(game->vulkan_renderer, imgui_renderer);
+    imgui_renderer_on_resize(imgui_renderer, game->vulkan_renderer);
 
     return imgui_renderer;
 }
@@ -229,9 +229,9 @@ bool imgui_renderer_on_sdl_event(SDL_Event* sdl_event)
     return ImGui_ImplSDL2_ProcessEvent(sdl_event);
 }
 
-void imgui_renderer_on_resize(struct VulkanRenderer* vulkan_renderer, ImGuiRenderer* imgui_renderer)
+void imgui_renderer_on_resize(ImGuiRenderer* imgui_renderer, struct VulkanRenderer* vulkan_renderer)
 {
-    imgui_renderer_destroy_framebuffers(vulkan_renderer, imgui_renderer);
+    imgui_renderer_destroy_framebuffers(imgui_renderer, vulkan_renderer);
 
     imgui_renderer->framebuffers = new VkFramebuffer[vulkan_renderer->swapchain_image_count];
     for (uint32_t i = 0; i < vulkan_renderer->swapchain_image_count; ++i)
@@ -264,7 +264,7 @@ void imgui_renderer_draw_windows(Game* game)
     game_imgui_stats_window();
 }
 
-void imgui_renderer_draw(struct Game* game, struct FrameResource* frame_resource, ImGuiRenderer* imgui_renderer)
+void imgui_renderer_draw(ImGuiRenderer* imgui_renderer, struct Game* game, struct FrameResource* frame_resource)
 {
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplSDL2_NewFrame();

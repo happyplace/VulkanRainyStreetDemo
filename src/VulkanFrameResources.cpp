@@ -87,7 +87,7 @@ VulkanFrameResources* vulkan_frame_resources_init(struct VulkanRenderer* vulkan_
     return vulkan_frame_resources;
 }
 
-void vulkan_frame_resources_destroy(struct VulkanRenderer* vulkan_renderer, VulkanFrameResources* vulkan_frame_resources)
+void vulkan_frame_resources_destroy(VulkanFrameResources* vulkan_frame_resources, struct VulkanRenderer* vulkan_renderer)
 {
     SDL_assert(vulkan_renderer);
     SDL_assert(vulkan_frame_resources);

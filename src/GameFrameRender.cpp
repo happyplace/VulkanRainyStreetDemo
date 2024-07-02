@@ -74,12 +74,12 @@ FrameResource* game_frame_render_begin_frame(Game* game)
     return frame_resource;
 }
 
-void game_frame_render_end_frame(Game* game, FrameResource* frame_resource)
+void game_frame_render_end_frame(FrameResource* frame_resource, Game* game)
 {
     vkCmdEndRenderPass(frame_resource->command_buffer);
 }
 
-void game_frame_render_submit(Game* game, FrameResource* frame_resource)
+void game_frame_render_submit(FrameResource* frame_resource, Game* game)
 {
     VkResult result = vkEndCommandBuffer(frame_resource->command_buffer);
     SDL_assert(result == VK_SUCCESS);

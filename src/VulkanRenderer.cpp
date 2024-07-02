@@ -66,7 +66,7 @@ bool vulkan_renderer_different_compute_and_graphics_queue(VulkanRenderer* vulkan
     return vulkan_renderer->graphics_queue_index != vulkan_renderer->compute_queue_index;
 }
 
-bool vulkan_renderer_init_instance(GameWindow* game_window, VulkanRenderer* vulkan_renderer)
+bool vulkan_renderer_init_instance(VulkanRenderer* vulkan_renderer, GameWindow* game_window)
 {
     uint32_t extension_count;
     if (!SDL_Vulkan_GetInstanceExtensions(game_window->window,&extension_count, nullptr))
@@ -449,7 +449,7 @@ bool vulkan_renderer_init_device(VulkanRenderer* vulkan_renderer)
     return true;
 }
 
-bool vulkan_renderer_init_swapchain(GameWindow* game_window, VulkanRenderer* vulkan_renderer)
+bool vulkan_renderer_init_swapchain(VulkanRenderer* vulkan_renderer, GameWindow* game_window)
 {
     uint32_t surface_format_count;
     VK_ASSERT(vkGetPhysicalDeviceSurfaceFormatsKHR(vulkan_renderer->physical_device, vulkan_renderer->window_surface, &surface_format_count, nullptr));
@@ -819,7 +819,7 @@ VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window)
 {
     VulkanRenderer* vulkan_renderer = new VulkanRenderer();
 
-    if (!vulkan_renderer_init_instance(game_window, vulkan_renderer))
+    if (!vulkan_renderer_init_instance(vulkan_renderer, game_window))
     {
         vulkan_renderer_destroy(vulkan_renderer);
         return nullptr;
@@ -831,7 +831,7 @@ VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window)
         return nullptr;
     }
 
-    if (!vulkan_renderer_init_swapchain(game_window, vulkan_renderer))
+    if (!vulkan_renderer_init_swapchain(vulkan_renderer, game_window))
     {
         vulkan_renderer_destroy(vulkan_renderer);
         return nullptr;
@@ -971,11 +971,11 @@ void vulkan_renderer_destroy(VulkanRenderer* vulkan_renderer)
     delete vulkan_renderer;
 }
 
-void vulkan_renderer_on_window_resized(struct GameWindow* game_window, VulkanRenderer* vulkan_renderer)
+void vulkan_renderer_on_window_resized(VulkanRenderer* vulkan_renderer, struct GameWindow* game_window)
 {
     vkDeviceWaitIdle(vulkan_renderer->device);
 
-    if (!vulkan_renderer_init_swapchain(game_window, vulkan_renderer))
+    if (!vulkan_renderer_init_swapchain(vulkan_renderer, game_window))
     {
         // abort
     }

@@ -18,13 +18,13 @@ void game_destroy(Game* game)
 #ifdef IMGUI_ENABLED
     if (game->imgui_renderer)
     {
-        imgui_renderer_destroy(game, game->imgui_renderer);
+        imgui_renderer_destroy(game->imgui_renderer, game);
     }
 #endif // IMGUI_ENABLED
 
     if (game->frame_resources)
     {
-        vulkan_frame_resources_destroy(game->vulkan_renderer, game->frame_resources);
+        vulkan_frame_resources_destroy(game->frame_resources, game->vulkan_renderer);
     }
 
     if (game->vulkan_renderer)
@@ -92,9 +92,9 @@ Game* game_init()
 void game_on_window_resized(Game* game)
 {
     game->game_window->window_resized = false;
-    vulkan_renderer_on_window_resized(game->game_window, game->vulkan_renderer);
+    vulkan_renderer_on_window_resized(game->vulkan_renderer, game->game_window);
 #ifdef IMGUI_ENABLED
-    imgui_renderer_on_resize(game->vulkan_renderer, game->imgui_renderer);
+    imgui_renderer_on_resize(game->imgui_renderer, game->vulkan_renderer);
 #endif // IMGUI_ENABLED
 }
 
@@ -116,13 +116,13 @@ int game_run(int argc, char** argv)
         }
 
         FrameResource* frame_resource = game_frame_render_begin_frame(game);
-        game_frame_render_end_frame(game, frame_resource);
+        game_frame_render_end_frame(frame_resource, game);
 
 #ifdef IMGUI_ENABLED
-        imgui_renderer_draw(game, frame_resource, game->imgui_renderer);
+        imgui_renderer_draw(game->imgui_renderer, game, frame_resource);
 #endif // IMGUI_ENABLED
 
-        game_frame_render_submit(game, frame_resource);
+        game_frame_render_submit(frame_resource, game);
     }
 
     game_destroy(game);
