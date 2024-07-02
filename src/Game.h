@@ -6,6 +6,7 @@ struct VulkanRenderer;
 struct VulkanFrameResources;
 struct GameMap;
 struct ImGuiRenderer;
+struct GameTimer;
 
 struct Game
 {
@@ -14,11 +15,12 @@ struct Game
     VulkanFrameResources* frame_resources = nullptr;
     GameMap* game_map = nullptr;
     ImGuiRenderer* imgui_renderer = nullptr;
+    GameTimer* game_timer = nullptr;
 };
 
 int game_run(int argc, char** argv);
 
 void game_on_window_resized(Game* game);
-void game_imgui_stats_window();
+void game_imgui_stats_window(struct FrameResource* frame_resource);
 
 #endif // VRSD_Game_h_

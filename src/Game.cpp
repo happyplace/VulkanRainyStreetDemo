@@ -1,5 +1,6 @@
 #include "Game.h"
 
+#include "GameTimer.h"
 #include "SDL_assert.h"
 
 #include "imgui.h"
@@ -14,6 +15,11 @@
 void game_destroy(Game* game)
 {
     SDL_assert(game);
+
+    if (game->game_timer)
+    {
+        game_timer_destroy(game->game_timer);
+    }
 
 #ifdef IMGUI_ENABLED
     if (game->imgui_renderer)
@@ -86,6 +92,13 @@ Game* game_init()
     }
 #endif // IMGUI_ENABLED
 
+    game->game_timer = game_timer_init();
+    if (game->game_timer == nullptr)
+    {
+        game_destroy(game);
+        return nullptr;
+    }
+
     return game;
 }
 
@@ -106,6 +119,8 @@ int game_run(int argc, char** argv)
         return 1;
     }
 
+    game_timer_reset(game->game_timer);
+
     while (!game->game_window->quit_requested)
     {
         game_window_process_events(game->game_window);
@@ -115,7 +130,14 @@ int game_run(int argc, char** argv)
             game_on_window_resized(game);
         }
 
+        game_timer_tick(game->game_timer);
+
         FrameResource* frame_resource = game_frame_render_begin_frame(game);
+
+        frame_resource->time.delta_time = game_timer_delta_time(game->game_timer);
+        frame_resource->time.total_time = game_timer_total_time(game->game_timer);
+        frame_resource->time.frame_number = game_timer_frame_count(game->game_timer);
+
         game_frame_render_end_frame(frame_resource, game);
 
 #ifdef IMGUI_ENABLED
@@ -129,12 +151,28 @@ int game_run(int argc, char** argv)
     return 0;
 }
 
-void game_imgui_stats_window()
+void game_imgui_stats_window(struct FrameResource* frame_resource)
 {
-    bool is_opened = true;
-    if (ImGui::Begin("Game Stats", &is_opened, ImGuiWindowFlags_None))
+    constexpr double time_span_duration = 1.0;
+
+    static double elapsed_time = 0.0;
+    static uint32_t elapsed_frame_count = 0;
+
+    static uint32_t frame_count = 0;
+
+    elapsed_frame_count++;
+    elapsed_time += frame_resource->time.delta_time;
+    if (elapsed_time >= time_span_duration)
     {
-        ImGui::Text("andrew was here");
+        frame_count = elapsed_frame_count;
+
+        elapsed_time -= time_span_duration;
+        elapsed_frame_count = 0;
+    }
+
+    if (ImGui::Begin("Game Stats", nullptr, ImGuiWindowFlags_None))
+    {
+        ImGui::Text("FPS: %u", frame_count);
     }
     ImGui::End();
 }
