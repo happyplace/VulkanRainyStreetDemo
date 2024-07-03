@@ -42,4 +42,6 @@ void vulkan_renderer_on_window_resized(VulkanRenderer* vulkan_renderer, struct G
 
 bool vulkan_renderer_different_compute_and_graphics_queue(VulkanRenderer* vulkan_renderer, struct GameWindow* game_window);
 
+void vulkan_renderer_wait_device_idle(VulkanRenderer* vulkan_renderer);
+
 #endif // VRSD_VulkanRenderer_h_

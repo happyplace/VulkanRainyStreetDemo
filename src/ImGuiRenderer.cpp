@@ -50,7 +50,7 @@ void imgui_renderer_destroy(ImGuiRenderer* imgui_renderer, struct Game* game)
     SDL_assert(imgui_renderer);
     SDL_assert(game);
 
-    vkDeviceWaitIdle(game->vulkan_renderer->device);
+    vulkan_renderer_wait_device_idle(game->vulkan_renderer);
 
     imgui_renderer_destroy_framebuffers(imgui_renderer, game->vulkan_renderer);
 

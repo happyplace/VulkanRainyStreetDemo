@@ -960,7 +960,7 @@ void vulkan_renderer_destroy(VulkanRenderer* vulkan_renderer)
 {
     SDL_assert(vulkan_renderer);
 
-    vkDeviceWaitIdle(vulkan_renderer->device);
+    vulkan_renderer_wait_device_idle(vulkan_renderer);
 
     vulkan_renderer_destroy_framebuffers(vulkan_renderer);
     vulkan_renderer_destroy_render_pass(vulkan_renderer);
@@ -974,7 +974,7 @@ void vulkan_renderer_destroy(VulkanRenderer* vulkan_renderer)
 
 void vulkan_renderer_on_window_resized(VulkanRenderer* vulkan_renderer, struct GameWindow* game_window)
 {
-    vkDeviceWaitIdle(vulkan_renderer->device);
+    vulkan_renderer_wait_device_idle(vulkan_renderer);
 
     if (!vulkan_renderer_init_swapchain(vulkan_renderer, game_window))
     {
@@ -991,5 +991,15 @@ void vulkan_renderer_on_window_resized(VulkanRenderer* vulkan_renderer, struct G
     if (!vulkan_renderer_init_frame_buffers(vulkan_renderer))
     {
        game_abort();
+    }
+}
+
+void vulkan_renderer_wait_device_idle(VulkanRenderer* vulkan_renderer)
+{
+    SDL_assert(vulkan_renderer);
+
+    if (vulkan_renderer->device != VK_NULL_HANDLE)
+    {
+        vkDeviceWaitIdle(vulkan_renderer->device);
     }
 }
