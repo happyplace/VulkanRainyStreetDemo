@@ -6,23 +6,18 @@
 #include <SDL_assert.h>
 
 #include "Game.h"
+#include "GameWindow.h"
 #include "VulkanFrameResources.h"
 #include "VulkanRenderer.h"
 
 FrameResource* game_frame_render_begin_frame(Game* game)
 {
-    FrameResource* frame_resource = vulkan_frame_resources_get_next_frame_resource(game->frame_resources);
+    VkResult result = VK_SUCCESS;
 
-    VkResult result = vkGetFenceStatus(game->vulkan_renderer->device, frame_resource->submit_fence);
-    SDL_assert(result != VK_ERROR_DEVICE_LOST);
+    FrameResource* frame_resource = vulkan_frame_resources_peek_next_frame_resource(game->frame_resources);
 
-    if (result == VK_NOT_READY)
-    {
-        result = vkWaitForFences(game->vulkan_renderer->device, 1, &frame_resource->submit_fence, VK_TRUE, UINT64_MAX);
-        SDL_assert(result == VK_SUCCESS);
-    }
-
-    result = vkResetFences(game->vulkan_renderer->device, 1, &frame_resource->submit_fence);
+    // make sure all the work on this frame resource is done before attempting to use it for another frame
+    result = vkWaitForFences(game->vulkan_renderer->device, 1, &frame_resource->submit_fence, VK_TRUE, UINT64_MAX);
     SDL_assert(result == VK_SUCCESS);
 
     result = vkAcquireNextImageKHR(
@@ -32,12 +27,21 @@ FrameResource* game_frame_render_begin_frame(Game* game)
         frame_resource->acquire_image,
         VK_NULL_HANDLE,
         &frame_resource->swapchain_image_index);
-    if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR && result != VK_ERROR_OUT_OF_DATE_KHR)
+    if (result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR)
+    {
+        return nullptr;
+    }
+    else if (result != VK_SUCCESS)
     {
         // if it's VK_SUBOPTIMAL_KHR or VK_ERROR_OUT_OF_DATE_KHR we'll rebuild the swap chain after the vkQueuePresentKHR
         // else every other error result besides VK_SUCCESS is considered an unhandled error
         SDL_assert(false);
     }
+
+    vulkan_frame_resources_pop_next_frame_resource(game->frame_resources);
+
+    result = vkResetFences(game->vulkan_renderer->device, 1, &frame_resource->submit_fence);
+    SDL_assert(result == VK_SUCCESS);
 
     result = vkResetCommandPool(game->vulkan_renderer->device, frame_resource->command_pool, 0);
     SDL_assert(result == VK_SUCCESS);
@@ -112,7 +116,7 @@ void game_frame_render_submit(FrameResource* frame_resource, Game* game)
     result = vkQueuePresentKHR(game->vulkan_renderer->graphics_queue, &present_info);
     if (result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR)
     {
-        game_on_window_resized(game);
+        game->game_window->window_resized = true;
     }
     else if (result != VK_SUCCESS)
     {

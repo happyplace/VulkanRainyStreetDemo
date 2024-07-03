@@ -30,6 +30,7 @@ struct VulkanFrameResources;
 VulkanFrameResources* vulkan_frame_resources_init(struct VulkanRenderer* vulkan_renderer);
 void vulkan_frame_resources_destroy(VulkanFrameResources* vulkan_frame_resources, struct VulkanRenderer* vulkan_renderer);
 
-FrameResource* vulkan_frame_resources_get_next_frame_resource(VulkanFrameResources* vulkan_frame_resources);
+void vulkan_frame_resources_pop_next_frame_resource(VulkanFrameResources* vulkan_frame_resources);
+FrameResource* vulkan_frame_resources_peek_next_frame_resource(VulkanFrameResources* vulkan_frame_resources);
 
 #endif // VRSD_VulkanFrameResources_h_

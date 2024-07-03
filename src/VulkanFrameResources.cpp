@@ -42,11 +42,13 @@ VulkanFrameResources* vulkan_frame_resources_init(struct VulkanRenderer* vulkan_
         VkResult result = vkCreateSemaphore(vulkan_renderer->device, &semaphore_create_info, nullptr, &frame_resource->acquire_image);
         if (result != VK_SUCCESS)
         {
+            vulkan_frame_resources_destroy(vulkan_frame_resources, vulkan_renderer);
             return nullptr;
         }
         result = vkCreateSemaphore(vulkan_renderer->device, &semaphore_create_info, nullptr, &frame_resource->release_image);
         if (result != VK_SUCCESS)
         {
+            vulkan_frame_resources_destroy(vulkan_frame_resources, vulkan_renderer);
             return nullptr;
         }
 
@@ -57,6 +59,7 @@ VulkanFrameResources* vulkan_frame_resources_init(struct VulkanRenderer* vulkan_
         result = vkCreateFence(vulkan_renderer->device, &fence_create_info, nullptr, &frame_resource->submit_fence);
         if (result != VK_SUCCESS)
         {
+            vulkan_frame_resources_destroy(vulkan_frame_resources, vulkan_renderer);
             return nullptr;
         }
 
@@ -68,6 +71,7 @@ VulkanFrameResources* vulkan_frame_resources_init(struct VulkanRenderer* vulkan_
         result = vkCreateCommandPool(vulkan_renderer->device, &command_pool_create_info, nullptr, &frame_resource->command_pool);
         if (result != VK_SUCCESS)
         {
+            vulkan_frame_resources_destroy(vulkan_frame_resources, vulkan_renderer);
             return nullptr;
         }
 
@@ -80,6 +84,7 @@ VulkanFrameResources* vulkan_frame_resources_init(struct VulkanRenderer* vulkan_
         result = vkAllocateCommandBuffers(vulkan_renderer->device, &command_buffer_allocate_info, &frame_resource->command_buffer);
         if (result != VK_SUCCESS)
         {
+            vulkan_frame_resources_destroy(vulkan_frame_resources, vulkan_renderer);
             return nullptr;
         }
     }
@@ -127,15 +132,16 @@ void vulkan_frame_resources_destroy(VulkanFrameResources* vulkan_frame_resources
     delete vulkan_frame_resources;
 }
 
-FrameResource* vulkan_frame_resources_get_next_frame_resource(VulkanFrameResources* vulkan_frame_resources)
+FrameResource* vulkan_frame_resources_peek_next_frame_resource(VulkanFrameResources* vulkan_frame_resources)
 {
-    FrameResource* frame_resource = &vulkan_frame_resources->frame_resources[vulkan_frame_resources->next_frame_resource_index];
+    return &vulkan_frame_resources->frame_resources[vulkan_frame_resources->next_frame_resource_index];
+}
 
+void vulkan_frame_resources_pop_next_frame_resource(VulkanFrameResources* vulkan_frame_resources)
+{
     vulkan_frame_resources->next_frame_resource_index++;
     if (vulkan_frame_resources->next_frame_resource_index >= VULKAN_FRAME_RESOURCES_FRAME_RESOURCE_COUNT)
     {
         vulkan_frame_resources->next_frame_resource_index = 0;
     }
-
-    return frame_resource;
 }

@@ -134,6 +134,11 @@ int game_run(int argc, char** argv)
 
         FrameResource* frame_resource = game_frame_render_begin_frame(game);
 
+        if (frame_resource == nullptr)
+        {
+            continue;
+        }
+
         frame_resource->time.delta_time = game_timer_delta_time(game->game_timer);
         frame_resource->time.total_time = game_timer_total_time(game->game_timer);
         frame_resource->time.frame_number = game_timer_frame_count(game->game_timer);
