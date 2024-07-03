@@ -109,6 +109,8 @@ bool vulkan_renderer_init_instance(VulkanRenderer* vulkan_renderer, GameWindow* 
     enabled_layer_names.push_back("VK_LAYER_KHRONOS_validation");
 #endif // VK_DEBUG
 
+// The Linux Nvidia drivers are able to get instance_layer_properties in optmized builds so guard all of this for debug code
+#ifdef _DEBUG
     for (const char* layer_name : enabled_layer_names)
     {
         bool layer_available = false;
@@ -128,6 +130,7 @@ bool vulkan_renderer_init_instance(VulkanRenderer* vulkan_renderer, GameWindow* 
             return false;
         }
     }
+#endif // _DEBUG
 
     VkInstanceCreateInfo instance_info;
     instance_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
