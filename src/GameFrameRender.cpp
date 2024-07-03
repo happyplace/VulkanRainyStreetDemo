@@ -27,14 +27,19 @@ FrameResource* game_frame_render_begin_frame(Game* game)
         frame_resource->acquire_image,
         VK_NULL_HANDLE,
         &frame_resource->swapchain_image_index);
-    if (result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR)
+    if (result == VK_ERROR_OUT_OF_DATE_KHR)
     {
+        game->game_window->window_resized = true;
         return nullptr;
     }
-    else if (result != VK_SUCCESS)
+    else if (result == VK_SUBOPTIMAL_KHR)
     {
-        // if it's VK_SUBOPTIMAL_KHR or VK_ERROR_OUT_OF_DATE_KHR we'll rebuild the swap chain after the vkQueuePresentKHR
-        // else every other error result besides VK_SUCCESS is considered an unhandled error
+        // this counts as an success, we can render the frame but next frame we're going to rebuild the swap chain
+        game->game_window->window_resized = true;
+    }
+    else if (result != VK_SUCCESS && result != VK_TIMEOUT && result != VK_NOT_READY)
+    {
+        // if it's not any of the the success result answers then it's some unhandled issue
         SDL_assert(false);
     }
 
