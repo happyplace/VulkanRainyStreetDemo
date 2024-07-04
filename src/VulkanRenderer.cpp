@@ -822,6 +822,52 @@ bool vulkan_renderer_init_frame_buffers(VulkanRenderer* vulkan_renderer)
     return true;
 }
 
+bool vulkan_renderer_init_samplers(VulkanRenderer* vulkan_renderer)
+{
+    vulkan_renderer->samplers = new VkSampler[static_cast<size_t>(VulkanRendererSamplerType::COUNT)];
+    for (size_t i = 0; i < static_cast<size_t>(VulkanRendererSamplerType::COUNT); ++i)
+    {
+        vulkan_renderer->samplers[i] = VK_NULL_HANDLE;
+    }
+
+    VkPhysicalDeviceFeatures physical_device_features;
+    vkGetPhysicalDeviceFeatures(vulkan_renderer->physical_device, &physical_device_features);
+
+    VkPhysicalDeviceProperties physical_device_properties;
+    vkGetPhysicalDeviceProperties(vulkan_renderer->physical_device, &physical_device_properties);
+
+    {
+        VkSamplerCreateInfo sampler_create_info;
+        sampler_create_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        sampler_create_info.pNext = nullptr;
+        sampler_create_info.flags = 0;
+        sampler_create_info.magFilter = VK_FILTER_LINEAR;
+        sampler_create_info.minFilter = VK_FILTER_LINEAR;
+        sampler_create_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        sampler_create_info.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        sampler_create_info.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        sampler_create_info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        sampler_create_info.mipLodBias = 0.0f;
+        sampler_create_info.anisotropyEnable = physical_device_features.samplerAnisotropy ? VK_TRUE : VK_FALSE;
+        sampler_create_info.maxAnisotropy = physical_device_features.samplerAnisotropy ? physical_device_properties.limits.maxSamplerAnisotropy : 1.0f;
+        sampler_create_info.compareEnable = VK_FALSE;
+        sampler_create_info.compareOp = VK_COMPARE_OP_NEVER;
+        sampler_create_info.minLod = 0.0f;
+        sampler_create_info.maxLod = 0.0f;
+        sampler_create_info.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+        sampler_create_info.unnormalizedCoordinates = VK_FALSE;
+
+        VkResult result = vkCreateSampler(vulkan_renderer->device, &sampler_create_info, s_allocator,
+            &vulkan_renderer->samplers[static_cast<size_t>(VulkanRendererSamplerType::Linear)]);
+        if (result != VK_SUCCESS)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window)
 {
     VulkanRenderer* vulkan_renderer = new VulkanRenderer();
@@ -857,6 +903,12 @@ VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window)
     }
 
     if (!vulkan_renderer_init_frame_buffers(vulkan_renderer))
+    {
+        vulkan_renderer_destroy(vulkan_renderer);
+        return nullptr;
+    }
+
+    if (!vulkan_renderer_init_samplers(vulkan_renderer))
     {
         vulkan_renderer_destroy(vulkan_renderer);
         return nullptr;
@@ -962,12 +1014,30 @@ void vulkan_renderer_destroy_framebuffers(VulkanRenderer* vulkan_renderer)
     }
 }
 
+void vulkan_renderer_destroy_samplers(VulkanRenderer* vulkan_renderer)
+{
+    if (vulkan_renderer->samplers != nullptr)
+    {
+        for (size_t i = 0; i < static_cast<size_t>(VulkanRendererSamplerType::COUNT); ++i)
+        {
+            if (vulkan_renderer->samplers[i] != VK_NULL_HANDLE)
+            {
+                vkDestroySampler(vulkan_renderer->device, vulkan_renderer->samplers[i], s_allocator);
+            }
+        }
+
+        delete[] vulkan_renderer->samplers;
+        vulkan_renderer->samplers = nullptr;
+    }
+}
+
 void vulkan_renderer_destroy(VulkanRenderer* vulkan_renderer)
 {
     SDL_assert(vulkan_renderer);
 
     vulkan_renderer_wait_device_idle(vulkan_renderer);
 
+    vulkan_renderer_destroy_samplers(vulkan_renderer);
     vulkan_renderer_destroy_framebuffers(vulkan_renderer);
     vulkan_renderer_destroy_render_pass(vulkan_renderer);
     vulkan_renderer_destroy_depth_stencil(vulkan_renderer);
