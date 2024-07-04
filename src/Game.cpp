@@ -11,10 +11,16 @@
 #include "GameMap.h"
 #include "GameFrameRender.h"
 #include "ImGuiRenderer.h"
+#include "MeshRenderer.h"
 
 void game_destroy(Game* game)
 {
     SDL_assert(game);
+
+    if (game->mesh_renderer)
+    {
+        mesh_renderer_destroy(game->mesh_renderer, game);
+    }
 
     if (game->game_timer)
     {
@@ -99,6 +105,13 @@ Game* game_init()
         return nullptr;
     }
 
+    game->mesh_renderer = mesh_renderer_init(game);
+    if (game->mesh_renderer == nullptr)
+    {
+        game_destroy(game);
+        return nullptr;
+    }
+
     return game;
 }
 
@@ -125,6 +138,8 @@ int game_run(int argc, char** argv)
         return 1;
     }
 
+    game_map_load(game->game_map);
+
     game_timer_reset(game->game_timer);
 
     while (!game_window_get_window_flag(game->game_window, GameWindowFlag::QuitRequested))
@@ -144,6 +159,9 @@ int game_run(int argc, char** argv)
         frame_resource->time.delta_time = game_timer_delta_time(game->game_timer);
         frame_resource->time.total_time = game_timer_total_time(game->game_timer);
         frame_resource->time.frame_number = game_timer_frame_count(game->game_timer);
+
+        game_map_update(game, frame_resource);
+        game_map_render(game, frame_resource);
 
         game_frame_render_end_frame(frame_resource, game);
 
