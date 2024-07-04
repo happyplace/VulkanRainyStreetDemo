@@ -45,6 +45,7 @@ set(vrsd-src
     "src/GameTimer.cpp"
     "src/MeshRenderer.h"
     "src/MeshRenderer.cpp"
+
 )
 
 include_directories("external/imgui-docking")
@@ -60,7 +61,10 @@ if (${ENABLE_IMGUI})
     )
 endif()
 
-include_directories("VulkanMemoryAllocator/include")
+include_directories("external/VulkanMemoryAllocator/include")
+set(vrsd-src ${vrsd-src}
+    "src/VmaUsage.cpp"
+)
 
 if (${CMAKE_C_COMPILER_ID} STREQUAL "MSVC")
     add_executable(VulkanRainyStreetDemo WIN32 ${vrsd-src})

@@ -6,6 +6,8 @@
 #include <vulkan/vulkan_core.h>
 
 struct VkAllocationCallbacks;
+VK_DEFINE_HANDLE(VmaAllocator);
+
 static VkAllocationCallbacks* s_allocator = nullptr;
 
 #define VK_ASSERT(X) SDL_assert(VK_SUCCESS == X)
@@ -42,6 +44,7 @@ struct VulkanRenderer
     VkRenderPass render_pass = VK_NULL_HANDLE;
     VkFramebuffer* framebuffers = nullptr;
     VkSampler* samplers = nullptr;
+    VmaAllocator vma_allocator = VK_NULL_HANDLE;
 };
 
 VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window);

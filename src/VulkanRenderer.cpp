@@ -8,6 +8,8 @@
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan.h>
 
+#include "vk_mem_alloc.h"
+
 #include <SDL_assert.h>
 #include <SDL_log.h>
 #include <SDL_vulkan.h>
@@ -15,6 +17,7 @@
 #include "Game.h"
 #include "GameWindow.h"
 #include "VulkanFrameResources.h" // needed for VULKAN_FRAME_RESOURCES_FRAME_RESOURCE_COUNT
+#include "vk_mem_alloc.h"
 
 #ifdef VK_DEBUG
 static VKAPI_ATTR VkBool32 VKAPI_CALL vulkan_renderer_debug_callback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT /*type*/,
@@ -868,6 +871,27 @@ bool vulkan_renderer_init_samplers(VulkanRenderer* vulkan_renderer)
     return true;
 }
 
+bool vulkan_renderer_init_vma_allocator(VulkanRenderer* vulkan_renderer)
+{
+    VmaAllocatorCreateInfo allocator_create_info;
+    allocator_create_info.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+    allocator_create_info.physicalDevice = vulkan_renderer->physical_device;
+    allocator_create_info.device = vulkan_renderer->device;
+    allocator_create_info.preferredLargeHeapBlockSize = 0;
+    allocator_create_info.pAllocationCallbacks = s_allocator;
+    allocator_create_info.pDeviceMemoryCallbacks = nullptr;
+    allocator_create_info.pHeapSizeLimit = nullptr;
+    allocator_create_info.pVulkanFunctions = nullptr;
+    allocator_create_info.instance = vulkan_renderer->instance;
+    allocator_create_info.vulkanApiVersion = VK_API_VERSION_1_0;
+#if VMA_EXTERNAL_MEMORY
+    allocator_create_info.pTypeExternalMemoryHandleTypes = nullptr;
+#endif // VMA_EXTERNAL_MEMORY
+
+    VkResult result = vmaCreateAllocator(&allocator_create_info, &vulkan_renderer->vma_allocator);
+    return result == VK_SUCCESS;
+}
+
 VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window)
 {
     VulkanRenderer* vulkan_renderer = new VulkanRenderer();
@@ -909,6 +933,12 @@ VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window)
     }
 
     if (!vulkan_renderer_init_samplers(vulkan_renderer))
+    {
+        vulkan_renderer_destroy(vulkan_renderer);
+        return nullptr;
+    }
+
+    if (!vulkan_renderer_init_vma_allocator(vulkan_renderer))
     {
         vulkan_renderer_destroy(vulkan_renderer);
         return nullptr;
@@ -1031,12 +1061,21 @@ void vulkan_renderer_destroy_samplers(VulkanRenderer* vulkan_renderer)
     }
 }
 
+void vulkan_renderer_destroy_vma_allocator(VulkanRenderer* vulkan_renderer)
+{
+    if (vulkan_renderer->vma_allocator != VK_NULL_HANDLE)
+    {
+        vmaDestroyAllocator(vulkan_renderer->vma_allocator);
+    }
+}
+
 void vulkan_renderer_destroy(VulkanRenderer* vulkan_renderer)
 {
     SDL_assert(vulkan_renderer);
 
     vulkan_renderer_wait_device_idle(vulkan_renderer);
 
+    vulkan_renderer_destroy_vma_allocator(vulkan_renderer);
     vulkan_renderer_destroy_samplers(vulkan_renderer);
     vulkan_renderer_destroy_framebuffers(vulkan_renderer);
     vulkan_renderer_destroy_render_pass(vulkan_renderer);
