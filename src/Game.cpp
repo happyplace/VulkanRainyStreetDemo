@@ -102,9 +102,15 @@ Game* game_init()
     return game;
 }
 
-void game_on_window_resized(Game* game)
+void game_resize_if_required(Game* game)
 {
-    game->game_window->window_resized = false;
+    if (!game_window_get_window_flag(game->game_window, GameWindowFlag::ResizeRequested))
+    {
+        return;
+    }
+
+    game_window_set_window_flag(game->game_window, GameWindowFlag::ResizeRequested, false);
+
     vulkan_renderer_on_window_resized(game->vulkan_renderer, game->game_window);
 #ifdef IMGUI_ENABLED
     imgui_renderer_on_resize(game->imgui_renderer, game->vulkan_renderer);
@@ -121,14 +127,10 @@ int game_run(int argc, char** argv)
 
     game_timer_reset(game->game_timer);
 
-    while (!game->game_window->quit_requested)
+    while (!game_window_get_window_flag(game->game_window, GameWindowFlag::QuitRequested))
     {
         game_window_process_events(game->game_window);
-
-        if (game->game_window->window_resized)
-        {
-            game_on_window_resized(game);
-        }
+        game_resize_if_required(game);
 
         game_timer_tick(game->game_timer);
 

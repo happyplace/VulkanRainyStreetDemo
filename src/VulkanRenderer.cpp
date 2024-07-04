@@ -169,6 +169,8 @@ bool vulkan_renderer_init_instance(VulkanRenderer* vulkan_renderer, GameWindow* 
     }
 #endif // VK_DEBUG
 
+// The Linux Nvidia drivers are able to get instance_layer_properties in optmized builds so guard all of this for debug code
+#ifdef VK_DEBUG
     for (const char* requested_extension_name : enabled_extension_names)
     {
         bool extension_available = false;
@@ -188,6 +190,7 @@ bool vulkan_renderer_init_instance(VulkanRenderer* vulkan_renderer, GameWindow* 
             return false;
         }
     }
+#endif // VK_DEBUG
 
     instance_info.enabledExtensionCount = static_cast<uint32_t>(enabled_extension_names.size());
     instance_info.ppEnabledExtensionNames = enabled_extension_names.data();

@@ -29,13 +29,13 @@ FrameResource* game_frame_render_begin_frame(Game* game)
         &frame_resource->swapchain_image_index);
     if (result == VK_ERROR_OUT_OF_DATE_KHR)
     {
-        game->game_window->window_resized = true;
+        game_window_set_window_flag(game->game_window, GameWindowFlag::ResizeRequested, true);
         return nullptr;
     }
     else if (result == VK_SUBOPTIMAL_KHR)
     {
         // this counts as an success, we can render the frame but next frame we're going to rebuild the swap chain
-        game->game_window->window_resized = true;
+        game_window_set_window_flag(game->game_window, GameWindowFlag::ResizeRequested, true);
     }
     else if (result != VK_SUCCESS && result != VK_TIMEOUT && result != VK_NOT_READY)
     {
@@ -121,7 +121,7 @@ void game_frame_render_submit(FrameResource* frame_resource, Game* game)
     result = vkQueuePresentKHR(game->vulkan_renderer->graphics_queue, &present_info);
     if (result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR)
     {
-        game->game_window->window_resized = true;
+        game_window_set_window_flag(game->game_window, GameWindowFlag::ResizeRequested, true);
     }
     else if (result != VK_SUCCESS)
     {

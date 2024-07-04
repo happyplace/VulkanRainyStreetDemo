@@ -22,7 +22,6 @@ int game_run(int argc, char** argv);
 
 void game_abort();
 
-void game_on_window_resized(Game* game);
 void game_imgui_stats_window(struct FrameResource* frame_resource);
 
 #endif // VRSD_Game_h_

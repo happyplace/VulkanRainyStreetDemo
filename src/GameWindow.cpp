@@ -4,6 +4,7 @@
 #include <SDL.h>
 #include <SDL_log.h>
 #include <SDL_assert.h>
+#include <cstdint>
 
 #ifdef IMGUI_ENABLED
 #include "ImGuiRenderer.h"
@@ -62,14 +63,31 @@ void game_window_process_events(GameWindow* game_window)
 
         if (sdl_event.type == SDL_QUIT)
         {
-            game_window->quit_requested = true;
+            game_window_set_window_flag(game_window, GameWindowFlag::QuitRequested, true);
         }
         else if (sdl_event.type == SDL_WINDOWEVENT_RESIZED)
         {
-            if (sdl_event.window.event == SDL_WINDOWEVENT_RESIZED)
+            if (sdl_event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
             {
-                game_window->window_resized = true;
+                game_window_set_window_flag(game_window, GameWindowFlag::ResizeRequested, true);
             }
         }
     }
+}
+
+void game_window_set_window_flag(GameWindow* game_window, GameWindowFlag flag, bool value)
+{
+    if (value)
+    {
+        game_window->window_flags |= static_cast<uint64_t>(flag);
+    }
+    else
+    {
+        game_window->window_flags &= ~static_cast<uint64_t>(flag);
+    }
+}
+
+bool game_window_get_window_flag(GameWindow* game_window, GameWindowFlag flag)
+{
+    return game_window->window_flags & static_cast<uint64_t>(flag);
 }
