@@ -58,6 +58,8 @@ if (${ENABLE_IMGUI})
     )
 endif()
 
+include_directories("VulkanMemoryAllocator/include")
+
 if (${CMAKE_C_COMPILER_ID} STREQUAL "MSVC")
     add_executable(VulkanRainyStreetDemo WIN32 ${vrsd-src})
 else()
