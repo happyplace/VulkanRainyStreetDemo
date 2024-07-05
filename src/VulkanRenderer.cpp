@@ -874,7 +874,7 @@ bool vulkan_renderer_init_samplers(VulkanRenderer* vulkan_renderer)
 bool vulkan_renderer_init_vma_allocator(VulkanRenderer* vulkan_renderer)
 {
     VmaAllocatorCreateInfo allocator_create_info;
-    allocator_create_info.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+    allocator_create_info.flags = 0;
     allocator_create_info.physicalDevice = vulkan_renderer->physical_device;
     allocator_create_info.device = vulkan_renderer->device;
     allocator_create_info.preferredLargeHeapBlockSize = 0;
@@ -884,7 +884,7 @@ bool vulkan_renderer_init_vma_allocator(VulkanRenderer* vulkan_renderer)
     allocator_create_info.pVulkanFunctions = nullptr;
     allocator_create_info.instance = vulkan_renderer->instance;
     allocator_create_info.vulkanApiVersion = VK_API_VERSION_1_0;
-#if VMA_EXTERNAL_MEMORY
+#ifdef VMA_EXTERNAL_MEMORY
     allocator_create_info.pTypeExternalMemoryHandleTypes = nullptr;
 #endif // VMA_EXTERNAL_MEMORY
 
