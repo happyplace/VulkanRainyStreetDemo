@@ -3,6 +3,7 @@
 #include "GameTimer.h"
 #include "SDL_assert.h"
 
+#include "VulkanSharedResources.h"
 #include "imgui.h"
 
 #include "GameWindow.h"
@@ -34,6 +35,16 @@ void game_destroy(Game* game)
     }
 #endif // IMGUI_ENABLED
 
+    if (game->game_map)
+    {
+        game_map_destroy(game->game_map);
+    }
+
+    if (game->shared_resources)
+    {
+        vulkan_shared_resources_destroy(game->shared_resources, game->vulkan_renderer);
+    }
+
     if (game->frame_resources)
     {
         vulkan_frame_resources_destroy(game->frame_resources, game->vulkan_renderer);
@@ -47,11 +58,6 @@ void game_destroy(Game* game)
     if (game->game_window)
     {
        game_window_destory(game->game_window);
-    }
-
-    if (game->game_map)
-    {
-        game_map_destroy(game->game_map);
     }
 
     delete game;
@@ -77,6 +83,13 @@ Game* game_init()
 
     game->frame_resources = vulkan_frame_resources_init(game->vulkan_renderer);
     if (game->frame_resources == nullptr)
+    {
+        game_destroy(game);
+        return nullptr;
+    }
+
+    game->shared_resources = vulkan_shared_resources_init(game->vulkan_renderer);
+    if (game->shared_resources == nullptr)
     {
         game_destroy(game);
         return nullptr;

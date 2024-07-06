@@ -46,6 +46,8 @@ set(vrsd-src
     "src/MeshRenderer.h"
     "src/MeshRenderer.cpp"
     "src/VrsdStd.h"
+    "src/VulkanSharedResources.h"
+    "src/VulkanSharedResources.cpp"
 )
 
 include_directories("external/imgui-docking")

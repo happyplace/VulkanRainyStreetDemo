@@ -12,12 +12,6 @@ static VkAllocationCallbacks* s_allocator = nullptr;
 
 #define VK_ASSERT(X) SDL_assert(VK_SUCCESS == X)
 
-enum class VulkanRendererSamplerType : uint8_t
-{
-    Linear,
-    COUNT,
-};
-
 struct VulkanRenderer
 {
     VkInstance instance = VK_NULL_HANDLE;
@@ -43,7 +37,6 @@ struct VulkanRenderer
     VkImageView depth_stencil_image_view = VK_NULL_HANDLE;
     VkRenderPass render_pass = VK_NULL_HANDLE;
     VkFramebuffer* framebuffers = nullptr;
-    VkSampler* samplers = nullptr;
     VmaAllocator vma_allocator = VK_NULL_HANDLE;
 };
 
@@ -55,7 +48,5 @@ void vulkan_renderer_on_window_resized(VulkanRenderer* vulkan_renderer, struct G
 bool vulkan_renderer_different_compute_and_graphics_queue(VulkanRenderer* vulkan_renderer, struct GameWindow* game_window);
 
 void vulkan_renderer_wait_device_idle(VulkanRenderer* vulkan_renderer);
-
-VkSampler vulkan_renderer_get_sampler(VulkanRenderer* vulkan_renderer, VulkanRendererSamplerType sampler_type);
 
 #endif // VRSD_VulkanRenderer_h_
