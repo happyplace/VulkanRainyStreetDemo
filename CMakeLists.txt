@@ -45,7 +45,7 @@ set(vrsd-src
     "src/GameTimer.cpp"
     "src/MeshRenderer.h"
     "src/MeshRenderer.cpp"
-
+    "src/VrsdStd.h"
 )
 
 include_directories("external/imgui-docking")
