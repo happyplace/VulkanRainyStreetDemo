@@ -68,6 +68,11 @@ set(vrsd-src ${vrsd-src}
     "src/VmaUsage.cpp"
 )
 
+include_directories("external/DirectXMath/Inc")
+
+add_definitions(-D_XM_NO_XMVECTOR_OVERLOADS_)
+include_directories("external/dotnet_runtime/include")
+
 if (${CMAKE_C_COMPILER_ID} STREQUAL "MSVC")
     add_executable(VulkanRainyStreetDemo WIN32 ${vrsd-src})
 else()
