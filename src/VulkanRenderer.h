@@ -6,6 +6,8 @@
 
 #include <vulkan/vulkan_core.h>
 
+#include "shaderc/shaderc.h"
+
 struct VkAllocationCallbacks;
 VK_DEFINE_HANDLE(VmaAllocator);
 
@@ -39,6 +41,7 @@ struct VulkanRenderer
     VkRenderPass render_pass = VK_NULL_HANDLE;
     VkFramebuffer* framebuffers = nullptr;
     VmaAllocator vma_allocator = VK_NULL_HANDLE;
+    shaderc_compiler_t shaderc_compiler = nullptr;
 };
 
 VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window);

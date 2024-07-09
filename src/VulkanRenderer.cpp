@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cmath>
+#include <shaderc/shaderc.h>
 #include <vector>
 
 #include <vulkan/vulkan_core.h>
@@ -847,6 +848,12 @@ bool vulkan_renderer_init_vma_allocator(VulkanRenderer* vulkan_renderer)
     return result == VK_SUCCESS;
 }
 
+bool vulkan_renderer_init_shaderc_compiler(VulkanRenderer* vulkan_render)
+{
+    vulkan_render->shaderc_compiler = shaderc_compiler_initialize();
+    return vulkan_render->shaderc_compiler != nullptr;
+}
+
 VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window)
 {
     VulkanRenderer* vulkan_renderer = new VulkanRenderer();
@@ -888,6 +895,12 @@ VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window)
     }
 
     if (!vulkan_renderer_init_vma_allocator(vulkan_renderer))
+    {
+        vulkan_renderer_destroy(vulkan_renderer);
+        return nullptr;
+    }
+
+    if (!vulkan_renderer_init_shaderc_compiler(vulkan_renderer))
     {
         vulkan_renderer_destroy(vulkan_renderer);
         return nullptr;
@@ -1001,12 +1014,21 @@ void vulkan_renderer_destroy_vma_allocator(VulkanRenderer* vulkan_renderer)
     }
 }
 
+void vulkan_renderer_destroy_shaderc_compiler(VulkanRenderer* vulkan_renderer)
+{
+    if (vulkan_renderer->shaderc_compiler != nullptr)
+    {
+        shaderc_compiler_release(vulkan_renderer->shaderc_compiler);
+    }
+}
+
 void vulkan_renderer_destroy(VulkanRenderer* vulkan_renderer)
 {
     SDL_assert(vulkan_renderer);
 
     vulkan_renderer_wait_device_idle(vulkan_renderer);
 
+    vulkan_renderer_destroy_shaderc_compiler(vulkan_renderer);
     vulkan_renderer_destroy_vma_allocator(vulkan_renderer);
     vulkan_renderer_destroy_framebuffers(vulkan_renderer);
     vulkan_renderer_destroy_render_pass(vulkan_renderer);
