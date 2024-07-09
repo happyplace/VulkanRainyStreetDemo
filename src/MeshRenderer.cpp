@@ -26,6 +26,7 @@ struct MeshRenderer
     VkDescriptorSet* descriptor_sets = nullptr;
     VkShaderModule vertex = VK_NULL_HANDLE;
     VkShaderModule fragment = VK_NULL_HANDLE;
+    VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
 };
 
 constexpr uint32_t c_mesh_renderer_desriptor_count = 4;
@@ -89,10 +90,19 @@ void mesh_renderer_destroy_compile_fragment_shader(MeshRenderer* mesh_renderer, 
     }
 }
 
+void mesh_renderer_destroy_pipeline_layout(MeshRenderer* mesh_renderer, Game* game)
+{
+    if (mesh_renderer->pipeline_layout != VK_NULL_HANDLE)
+    {
+        vkDestroyPipelineLayout(game->vulkan_renderer->device, mesh_renderer->pipeline_layout, s_allocator);
+    }
+}
+
 void mesh_renderer_destroy(MeshRenderer* mesh_renderer, struct Game* game)
 {
     SDL_assert(mesh_renderer);
 
+    mesh_renderer_destroy_pipeline_layout(mesh_renderer, game);
     mesh_renderer_destroy_compile_fragment_shader(mesh_renderer, game);
     mesh_renderer_destroy_compile_vertex_shader(mesh_renderer, game);
     mesh_renderer_destroy_descriptor_set(mesh_renderer, game);
@@ -340,6 +350,21 @@ bool mesh_renderer_init_compile_fragment_shader(MeshRenderer* mesh_renderer, Gam
     return result;
 }
 
+bool mesh_renderer_init_pipeline_layout(MeshRenderer* mesh_renderer, Game* game)
+{
+    VkPipelineLayoutCreateInfo pipeline_layout_create_info;
+    pipeline_layout_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipeline_layout_create_info.pNext = nullptr;
+    pipeline_layout_create_info.flags = 0;
+    pipeline_layout_create_info.setLayoutCount = c_mesh_renderer_desriptor_count;
+    pipeline_layout_create_info.pSetLayouts = mesh_renderer->descriptor_set_layouts;
+    pipeline_layout_create_info.pushConstantRangeCount = 0;
+    pipeline_layout_create_info.pPushConstantRanges = nullptr;
+
+    VkResult result = vkCreatePipelineLayout(game->vulkan_renderer->device, &pipeline_layout_create_info, s_allocator, &mesh_renderer->pipeline_layout);
+    return result == VK_SUCCESS;
+}
+
 MeshRenderer* mesh_renderer_init(struct Game* game)
 {
     MeshRenderer* mesh_renderer = new MeshRenderer();
@@ -363,6 +388,12 @@ MeshRenderer* mesh_renderer_init(struct Game* game)
     }
 
     if (!mesh_renderer_init_compile_fragment_shader(mesh_renderer, game))
+    {
+        mesh_renderer_destroy(mesh_renderer, game);
+        return nullptr;
+    }
+
+    if (!mesh_renderer_init_pipeline_layout(mesh_renderer, game))
     {
         mesh_renderer_destroy(mesh_renderer, game);
         return nullptr;
