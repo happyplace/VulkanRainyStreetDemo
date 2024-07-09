@@ -3,8 +3,12 @@
 #include <SDL_assert.h>
 
 #include <vulkan/vulkan.h>
+#include <vulkan/vulkan_core.h>
+
+#include "vk_mem_alloc.h"
 
 #include "VulkanRenderer.h"
+#include "VulkanFrameResources.h"
 
 void vulkan_renderer_destroy_samplers(VulkanSharedResources* vulkan_shared_resources, VulkanRenderer* vulkan_renderer)
 {
@@ -23,6 +27,17 @@ void vulkan_renderer_destroy_samplers(VulkanSharedResources* vulkan_shared_resou
     }
 }
 
+void vulkan_shared_resources_destroy_frame_buffer(VulkanSharedResources* vulkan_shared_resources, VulkanRenderer* vulkan_renderer)
+{
+    if (vulkan_shared_resources->frame_allocation != VK_NULL_HANDLE || vulkan_shared_resources->frame_buffer != VK_NULL_HANDLE)
+    {
+        vmaDestroyBuffer(vulkan_renderer->vma_allocator, vulkan_shared_resources->frame_buffer, vulkan_shared_resources->frame_allocation);
+
+        vulkan_shared_resources->frame_allocation = VK_NULL_HANDLE;
+        vulkan_shared_resources->frame_buffer = VK_NULL_HANDLE;
+    }
+}
+
 void vulkan_shared_resources_destroy(VulkanSharedResources* vulkan_shared_resources, struct VulkanRenderer* vulkan_renderer)
 {
     SDL_assert(vulkan_shared_resources);
@@ -30,6 +45,7 @@ void vulkan_shared_resources_destroy(VulkanSharedResources* vulkan_shared_resour
 
     vulkan_renderer_wait_device_idle(vulkan_renderer);
 
+    vulkan_shared_resources_destroy_frame_buffer(vulkan_shared_resources, vulkan_renderer);
     vulkan_renderer_destroy_samplers(vulkan_shared_resources, vulkan_renderer);
 }
 
@@ -79,11 +95,47 @@ bool vulkan_shared_resources_init_samplers(VulkanSharedResources* vulkan_shared_
     return true;
 }
 
+bool vulkan_shared_resources_init_frame_buffer(VulkanSharedResources* vulkan_shared_resources, VulkanRenderer* vulkan_renderer)
+{
+    vulkan_shared_resources->frame_alignment_size = vulkan_renderer_calculate_uniform_buffer_size(vulkan_renderer, sizeof(Vulkan_FrameBuffer));
+
+    VkBufferCreateInfo buffer_create_info;
+    buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    buffer_create_info.pNext = nullptr;
+    buffer_create_info.flags = 0;
+    buffer_create_info.size = vulkan_shared_resources->frame_alignment_size * VULKAN_FRAME_RESOURCES_FRAME_RESOURCE_COUNT;
+    buffer_create_info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    buffer_create_info.queueFamilyIndexCount = 0;
+    buffer_create_info.pQueueFamilyIndices = nullptr;
+
+    VmaAllocationCreateInfo allocation_create_info;
+    allocation_create_info.flags = 0;
+    allocation_create_info.usage = VMA_MEMORY_USAGE_AUTO;
+    allocation_create_info.requiredFlags = 0;
+    allocation_create_info.preferredFlags = 0;
+    allocation_create_info.memoryTypeBits = 0;
+    allocation_create_info.pool = VK_NULL_HANDLE;
+    allocation_create_info.pUserData = nullptr;
+    allocation_create_info.priority = 0.0f;
+
+    VkResult result = vmaCreateBuffer(vulkan_renderer->vma_allocator, &buffer_create_info, &allocation_create_info,
+        &vulkan_shared_resources->frame_buffer, &vulkan_shared_resources->frame_allocation, nullptr);
+
+    return result == VK_SUCCESS;
+}
+
 VulkanSharedResources* vulkan_shared_resources_init(struct VulkanRenderer* vulkan_renderer)
 {
     VulkanSharedResources* vulkan_shared_resources = new VulkanSharedResources();
 
     if (!vulkan_shared_resources_init_samplers(vulkan_shared_resources, vulkan_renderer))
+    {
+        vulkan_shared_resources_destroy(vulkan_shared_resources, vulkan_renderer);
+        return nullptr;
+    }
+
+    if (!vulkan_shared_resources_init_frame_buffer(vulkan_shared_resources, vulkan_renderer))
     {
         vulkan_shared_resources_destroy(vulkan_shared_resources, vulkan_renderer);
         return nullptr;
@@ -102,4 +154,9 @@ VkSampler vulkan_shared_resources_get_sampler(VulkanSharedResources* vulkan_shar
     }
 
     return vulkan_shared_resources->samplers[sampler_type_index];
+}
+
+uint32_t vulkan_shared_resources_get_frame_buffer_offset(VulkanSharedResources* vulkan_shared_resources, struct FrameResource* frame_resource)
+{
+    return static_cast<uint32_t>(vulkan_shared_resources->frame_alignment_size * frame_resource->index);
 }
