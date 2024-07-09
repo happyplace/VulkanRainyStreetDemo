@@ -6,6 +6,8 @@
 #include <cmath>
 #include <shaderc/shaderc.h>
 #include <vector>
+#include <iostream>
+#include <fstream>
 
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan.h>
@@ -1077,4 +1079,78 @@ VkDeviceSize vulkan_renderer_calculate_uniform_buffer_size(VulkanRenderer* vulka
     return
         vulkan_renderer->min_uniform_buffer_offset_alignment *
         static_cast<VkDeviceSize>(ceil(static_cast<float>(size) / vulkan_renderer->min_uniform_buffer_offset_alignment));
+}
+
+bool vulkan_renderer_compile_shader(VulkanRenderer* vulkan_renderer, const char* path, shaderc_compile_options_t compile_options, shaderc_shader_kind shader_kind, VkShaderModule* out_shader_module)
+{
+    char* shader_src_file = nullptr;
+    size_t shader_size = 0;
+
+    std::ifstream shader_file(path, std::ios::in | std::ios::binary | std::ios::ate);
+    if (shader_file.is_open())
+    {
+        // std::ios::ate will automatically seek to the end of the file on opening it,
+        // so tellg will report the size of the file
+        shader_size = shader_file.tellg();
+        shader_src_file = new char[shader_size];
+
+        shader_file.seekg(0, std::ios::beg);
+        shader_file.read(shader_src_file, shader_size);
+        shader_file.close();
+    }
+
+    if (shader_src_file == nullptr)
+    {
+        SDL_assert(false);
+        return false;
+    }
+
+    shaderc_compilation_result_t compilation_result = shaderc_compile_into_spv(
+        vulkan_renderer->shaderc_compiler,
+        shader_src_file,
+        shader_size,
+        shader_kind,
+        path,
+        "main",
+        compile_options);
+
+    delete[] shader_src_file;
+
+    shaderc_compilation_status compilation_status = shaderc_result_get_compilation_status(compilation_result);
+    if (compilation_status != shaderc_compilation_status_success)
+    {
+        const char* error_message = shaderc_result_get_error_message(compilation_result);
+        SDL_LogCritical(SDL_LOG_CATEGORY_APPLICATION, "Shader Compilation Error %s\n%s", path, error_message);
+    }
+
+    if (compilation_status != shaderc_compilation_status_success)
+    {
+        shaderc_result_release(compilation_result);
+        return false;
+    }
+
+    const uint32_t* shader_data = reinterpret_cast<const uint32_t*>(shaderc_result_get_bytes(compilation_result));
+    size_t shader_data_size = shaderc_result_get_length(compilation_result);
+
+    constexpr uint32_t SPIRV_MAGIC = 0x07230203;
+    if (SPIRV_MAGIC != shader_data[0])
+    {
+        shaderc_result_release(compilation_result);
+        SDL_LogCritical(SDL_LOG_CATEGORY_APPLICATION, "Shader Compilation Error %s\nshader data didn't match magic value", path);
+        return false;
+    }
+
+    VkShaderModuleCreateInfo shader_module_create_info;
+    shader_module_create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    shader_module_create_info.pNext = nullptr;
+    shader_module_create_info.flags = 0;
+    shader_module_create_info.codeSize = shader_data_size;
+    shader_module_create_info.pCode = shader_data;
+
+    VkResult result = vkCreateShaderModule(vulkan_renderer->device, &shader_module_create_info, s_allocator, out_shader_module);
+    VK_ASSERT(result);
+
+    shaderc_result_release(compilation_result);
+
+    return result == VK_SUCCESS;
 }

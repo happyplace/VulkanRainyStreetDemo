@@ -3,7 +3,9 @@
 #include <array>
 
 #include <SDL_assert.h>
+#include <SDL_log.h>
 
+#include <shaderc/shaderc.h>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
@@ -22,6 +24,8 @@ struct MeshRenderer
     VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
     VkDescriptorSetLayout* descriptor_set_layouts = nullptr;
     VkDescriptorSet* descriptor_sets = nullptr;
+    VkShaderModule vertex = VK_NULL_HANDLE;
+    VkShaderModule fragment = VK_NULL_HANDLE;
 };
 
 constexpr uint32_t c_mesh_renderer_desriptor_count = 4;
@@ -69,10 +73,28 @@ void mesh_renderer_destroy_descriptor_set(MeshRenderer* mesh_renderer, Game* gam
     }
 }
 
+void mesh_renderer_destroy_compile_vertex_shader(MeshRenderer* mesh_renderer, Game* game)
+{
+    if (mesh_renderer->vertex != VK_NULL_HANDLE)
+    {
+        vkDestroyShaderModule(game->vulkan_renderer->device, mesh_renderer->vertex, s_allocator);
+    }
+}
+
+void mesh_renderer_destroy_compile_fragment_shader(MeshRenderer* mesh_renderer, Game* game)
+{
+    if (mesh_renderer->fragment != VK_NULL_HANDLE)
+    {
+        vkDestroyShaderModule(game->vulkan_renderer->device, mesh_renderer->fragment, s_allocator);
+    }
+}
+
 void mesh_renderer_destroy(MeshRenderer* mesh_renderer, struct Game* game)
 {
     SDL_assert(mesh_renderer);
 
+    mesh_renderer_destroy_compile_fragment_shader(mesh_renderer, game);
+    mesh_renderer_destroy_compile_vertex_shader(mesh_renderer, game);
     mesh_renderer_destroy_descriptor_set(mesh_renderer, game);
     mesh_renderer_destroy_object_buffer(mesh_renderer, game);
 
@@ -276,6 +298,48 @@ bool mesh_renderer_init_descriptor_set(MeshRenderer* mesh_renderer, Game* game)
     return true;
 }
 
+bool mesh_renderer_init_compile_vertex_shader(MeshRenderer* mesh_renderer, Game* game)
+{
+    shaderc_compile_options_t compile_options = shaderc_compile_options_initialize();
+    if (compile_options == nullptr)
+    {
+        SDL_assert(false);
+        return false;
+    }
+
+    bool result = vulkan_renderer_compile_shader(
+        game->vulkan_renderer,
+        "data/MeshShader.vert",
+        compile_options,
+        shaderc_glsl_vertex_shader,
+        &mesh_renderer->vertex);
+
+    shaderc_compile_options_release(compile_options);
+
+    return result;
+}
+
+bool mesh_renderer_init_compile_fragment_shader(MeshRenderer* mesh_renderer, Game* game)
+{
+    shaderc_compile_options_t compile_options = shaderc_compile_options_initialize();
+    if (compile_options == nullptr)
+    {
+        SDL_assert(false);
+        return false;
+    }
+
+    bool result = vulkan_renderer_compile_shader(
+        game->vulkan_renderer,
+        "data/MeshShader.frag",
+        compile_options,
+        shaderc_glsl_fragment_shader,
+        &mesh_renderer->fragment);
+
+    shaderc_compile_options_release(compile_options);
+
+    return result;
+}
+
 MeshRenderer* mesh_renderer_init(struct Game* game)
 {
     MeshRenderer* mesh_renderer = new MeshRenderer();
@@ -287,6 +351,18 @@ MeshRenderer* mesh_renderer_init(struct Game* game)
     }
 
     if (!mesh_renderer_init_descriptor_set(mesh_renderer, game))
+    {
+        mesh_renderer_destroy(mesh_renderer, game);
+        return nullptr;
+    }
+
+    if (!mesh_renderer_init_compile_vertex_shader(mesh_renderer, game))
+    {
+        mesh_renderer_destroy(mesh_renderer, game);
+        return nullptr;
+    }
+
+    if (!mesh_renderer_init_compile_fragment_shader(mesh_renderer, game))
     {
         mesh_renderer_destroy(mesh_renderer, game);
         return nullptr;
