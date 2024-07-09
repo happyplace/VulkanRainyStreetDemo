@@ -1,6 +1,7 @@
 #ifndef VRSD_VulkanRenderer_h_
 #define VRSD_VulkanRenderer_h_
 
+#include <cstddef>
 #include <cstdint>
 
 #include <vulkan/vulkan_core.h>
@@ -48,5 +49,7 @@ void vulkan_renderer_on_window_resized(VulkanRenderer* vulkan_renderer, struct G
 bool vulkan_renderer_different_compute_and_graphics_queue(VulkanRenderer* vulkan_renderer, struct GameWindow* game_window);
 
 void vulkan_renderer_wait_device_idle(VulkanRenderer* vulkan_renderer);
+
+VkDeviceSize vulkan_renderer_calculate_uniform_buffer_size(VulkanRenderer* vulkan_renderer, size_t size);
 
 #endif // VRSD_VulkanRenderer_h_

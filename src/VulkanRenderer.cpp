@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cmath>
 #include <vector>
 
 #include <vulkan/vulkan_core.h>
@@ -1047,4 +1048,11 @@ void vulkan_renderer_wait_device_idle(VulkanRenderer* vulkan_renderer)
     {
         vkDeviceWaitIdle(vulkan_renderer->device);
     }
+}
+
+VkDeviceSize vulkan_renderer_calculate_uniform_buffer_size(VulkanRenderer* vulkan_renderer, size_t size)
+{
+    return
+        vulkan_renderer->min_uniform_buffer_offset_alignment *
+        static_cast<VkDeviceSize>(ceil(static_cast<float>(size) / vulkan_renderer->min_uniform_buffer_offset_alignment));
 }
