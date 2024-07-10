@@ -157,7 +157,7 @@ bool mesh_renderer_init_descriptor_set(MeshRenderer* mesh_renderer, Game* game)
     constexpr uint32_t max_render_object_count = 1;
 
     std::array<VkDescriptorPoolSize, c_mesh_renderer_desriptor_count> descriptor_pool_size;
-    descriptor_pool_size[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    descriptor_pool_size[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     descriptor_pool_size[0].descriptorCount = 1;
     descriptor_pool_size[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     descriptor_pool_size[1].descriptorCount = 1;
@@ -195,7 +195,7 @@ bool mesh_renderer_init_descriptor_set(MeshRenderer* mesh_renderer, Game* game)
 
     VkDescriptorSetLayoutBinding frame_buffer_descriptor_set_layout_binding;
     frame_buffer_descriptor_set_layout_binding.binding = 0;
-    frame_buffer_descriptor_set_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    frame_buffer_descriptor_set_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     frame_buffer_descriptor_set_layout_binding.descriptorCount = 1;
     frame_buffer_descriptor_set_layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     frame_buffer_descriptor_set_layout_binding.pImmutableSamplers = nullptr;
@@ -290,7 +290,7 @@ bool mesh_renderer_init_descriptor_set(MeshRenderer* mesh_renderer, Game* game)
     frame_buffer_write_descriptor_set.dstBinding = 0;
     frame_buffer_write_descriptor_set.dstArrayElement = 0;
     frame_buffer_write_descriptor_set.descriptorCount = 1;
-    frame_buffer_write_descriptor_set.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    frame_buffer_write_descriptor_set.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     frame_buffer_write_descriptor_set.pBufferInfo = &frame_buffer_descriptor_buffer_info;
     frame_buffer_write_descriptor_set.pImageInfo = nullptr;
     frame_buffer_write_descriptor_set.pTexelBufferView = nullptr;
