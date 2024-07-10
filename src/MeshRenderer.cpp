@@ -629,3 +629,41 @@ MeshRenderer* mesh_renderer_init(struct Game* game)
 
     return mesh_renderer;
 }
+
+uint32_t mesh_renderer_get_object_buffer_offset(MeshRenderer* mesh_renderer, struct FrameResource* frame_resource, uint32_t object_index)
+{
+    return static_cast<uint32_t>((c_mesh_renderer_max_mesh_object * mesh_renderer->object_alignment_size * frame_resource->index) + object_index);
+}
+
+void mesh_renderer_render(MeshRenderer* mesh_renderer, struct FrameResource* frame_resource, struct Game* game)
+{
+    vkCmdBindPipeline(frame_resource->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_renderer->pipeline);
+
+    VkViewport viewport;
+    viewport.x = 0;
+    viewport.y = 0;
+    viewport.width = static_cast<float>(game->vulkan_renderer->swapchain_width);
+    viewport.height = static_cast<float>(game->vulkan_renderer->swapchain_height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    vkCmdSetViewport(frame_resource->command_buffer, 0, 1, &viewport);
+
+    VkRect2D scissor;
+    scissor.offset.x = 0;
+    scissor.offset.y = 0;
+    scissor.extent.width = static_cast<float>(game->vulkan_renderer->swapchain_width);
+    scissor.extent.height = static_cast<float>(game->vulkan_renderer->swapchain_height);
+    vkCmdSetScissor(frame_resource->command_buffer, 0, 1, &scissor);
+
+    uint32_t frame_buffer_offset = vulkan_shared_resources_get_frame_buffer_offset(game->shared_resources, frame_resource);
+    vkCmdBindDescriptorSets(frame_resource->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_renderer->pipeline_layout, 0, 1,
+        &mesh_renderer->descriptor_sets[0], 1, &frame_buffer_offset);
+    vkCmdBindDescriptorSets(frame_resource->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_renderer->pipeline_layout, 2, 1,
+        &mesh_renderer->descriptor_sets[2], 0, nullptr);
+    vkCmdBindDescriptorSets(frame_resource->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_renderer->pipeline_layout, 3, 1,
+        &mesh_renderer->descriptor_sets[3], 0, nullptr);
+
+    uint32_t object_buffer_offset = mesh_renderer_get_object_buffer_offset(mesh_renderer, frame_resource, 0);
+    vkCmdBindDescriptorSets(frame_resource->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_renderer->pipeline_layout, 1, 1,
+        &mesh_renderer->descriptor_sets[1], 1, &object_buffer_offset);
+}

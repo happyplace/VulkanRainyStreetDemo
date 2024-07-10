@@ -2,6 +2,9 @@
 
 #include <SDL_assert.h>
 
+#include "MeshRenderer.h"
+#include "Game.h"
+
 struct GameMapRenderer
 {
 
@@ -19,4 +22,9 @@ GameMapRenderer* game_map_renderer_init()
     GameMapRenderer* game_map_renderer = new GameMapRenderer();
 
     return game_map_renderer;
+}
+
+void game_map_renderer_render(GameMapRenderer* game_map_renderer, struct FrameResource* frame_resource, struct Game* game)
+{
+    mesh_renderer_render(game->mesh_renderer, frame_resource, game);
 }
