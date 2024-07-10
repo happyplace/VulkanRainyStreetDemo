@@ -16,7 +16,6 @@ struct Game
     VulkanRenderer* vulkan_renderer = nullptr;
     VulkanFrameResources* frame_resources = nullptr;
     VulkanSharedResources* shared_resources = nullptr;
-    GameMap* game_map = nullptr;
     ImGuiRenderer* imgui_renderer = nullptr;
     GameTimer* game_timer = nullptr;
     MeshRenderer* mesh_renderer = nullptr;
