@@ -112,6 +112,8 @@ void mesh_renderer_destroy(MeshRenderer* mesh_renderer, struct Game* game)
 {
     SDL_assert(mesh_renderer);
 
+    vulkan_renderer_wait_device_idle(game->vulkan_renderer);
+
     mesh_renderer_destroy_pipeline(mesh_renderer, game);
     mesh_renderer_destroy_pipeline_layout(mesh_renderer, game);
     mesh_renderer_destroy_compile_fragment_shader(mesh_renderer, game);
