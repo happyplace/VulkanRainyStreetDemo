@@ -136,7 +136,7 @@ bool vulkan_shared_resources_init_frame_buffer(VulkanSharedResources* vulkan_sha
     buffer_create_info.pQueueFamilyIndices = nullptr;
 
     VmaAllocationCreateInfo allocation_create_info;
-    allocation_create_info.flags = 0;
+    allocation_create_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
     allocation_create_info.usage = VMA_MEMORY_USAGE_AUTO;
     allocation_create_info.requiredFlags = 0;
     allocation_create_info.preferredFlags = 0;
