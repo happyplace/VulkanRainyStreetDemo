@@ -4,8 +4,8 @@
 
 layout(std140, set = 0, binding = 0) uniform FrameBuffer
 {
-    mat4 view_projection;
-    vec3 eye_position;
+    mat4 view_proj;
+    vec3 eye_pos;
 } Frame;
 
 layout(std140, set = 1, binding = 0) uniform ObjectBuffer

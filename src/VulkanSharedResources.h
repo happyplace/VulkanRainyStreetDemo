@@ -14,8 +14,8 @@ VK_DEFINE_HANDLE(VmaAllocation);
 
 struct VRSD_ALIGN(16) Vulkan_FrameBuffer
 {
-    DirectX::XMFLOAT4X4 view_projection;
-    DirectX::XMFLOAT3 eye_position;
+    DirectX::XMFLOAT4X4 view_proj;
+    DirectX::XMFLOAT3 eye_pos;
 };
 
 struct VulkanMeshResource
