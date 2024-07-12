@@ -33,5 +33,5 @@
 | KhronosGroup glslang | external/shaderc/third_party/glslang |
 | SPIR-V Tools | external/shaderc/third_party/spirv-tools |
 | SPIR-V Headers | external/shaderc/third_party/spirv-tools/external/spirv-headers |
-| SDL 2 | *links system library* |
-| Vulkan | *links system library* |
+| SDL 2 | *(links system library)* |
+| Vulkan | *(links system library)* |
