@@ -21,7 +21,6 @@
 #include "Game.h"
 #include "GameWindow.h"
 #include "VulkanFrameResources.h" // needed for VULKAN_FRAME_RESOURCES_FRAME_RESOURCE_COUNT
-#include "vk_mem_alloc.h"
 
 #ifdef VK_DEBUG
 static VKAPI_ATTR VkBool32 VKAPI_CALL vulkan_renderer_debug_callback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT /*type*/,
