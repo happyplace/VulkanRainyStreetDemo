@@ -9,6 +9,7 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
+#include "DirectXMath.h"
 #include "vk_mem_alloc.h"
 
 #include "Game.h"
@@ -139,7 +140,7 @@ bool mesh_renderer_init_object_buffer(MeshRenderer* mesh_renderer, Game* game)
     buffer_create_info.pQueueFamilyIndices = nullptr;
 
     VmaAllocationCreateInfo allocation_create_info;
-    allocation_create_info.flags = 0;
+    allocation_create_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
     allocation_create_info.usage = VMA_MEMORY_USAGE_AUTO;
     allocation_create_info.requiredFlags = 0;
     allocation_create_info.preferredFlags = 0;
@@ -665,7 +666,26 @@ void mesh_renderer_render(MeshRenderer* mesh_renderer, struct FrameResource* fra
     vkCmdBindDescriptorSets(frame_resource->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_renderer->pipeline_layout, 3, 1,
         &mesh_renderer->descriptor_sets[3], 0, nullptr);
 
+    Vulkan_MeshRendererObjectBuffer object_buffer;
+    DirectX::XMStoreFloat4x4(&object_buffer.world, DirectX::XMMatrixIdentity());
+
+    VulkanMeshType vulkan_mesh_type = VulkanMeshType::Cube;
+
     uint32_t object_buffer_offset = mesh_renderer_get_object_buffer_offset(mesh_renderer, frame_resource, 0);
+
+    VK_ASSERT(vmaCopyMemoryToAllocation(
+        game->vulkan_renderer->vma_allocator,
+        &object_buffer,
+        mesh_renderer->object_allocation,
+        object_buffer_offset,
+        static_cast<VkDeviceSize>(sizeof(Vulkan_MeshRendererObjectBuffer))));
+
     vkCmdBindDescriptorSets(frame_resource->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_renderer->pipeline_layout, 1, 1,
         &mesh_renderer->descriptor_sets[1], 1, &object_buffer_offset);
+
+    VulkanMeshResource* vulkan_mesh_resource = vulkan_shared_resources_get_mesh(game->shared_resources, vulkan_mesh_type);
+
+    const VkDeviceSize vertex_offset = 0;
+    vkCmdBindVertexBuffers(frame_resource->command_buffer, 0, 1, &vulkan_mesh_resource->vertex_buffer, &vertex_offset);
+    vkCmdBindIndexBuffer(frame_resource->command_buffer, vulkan_mesh_resource->index_buffer, 0, VK_INDEX_TYPE_UINT32);
 }
