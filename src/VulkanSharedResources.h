@@ -54,4 +54,6 @@ void vulkan_shared_resources_destroy(VulkanSharedResources* vulkan_shared_resour
 VkSampler vulkan_shared_resources_get_sampler(VulkanSharedResources* vulkan_shared_resources, VulkanSharedResourcesSamplerType sampler_type);
 uint32_t vulkan_shared_resources_get_frame_buffer_offset(VulkanSharedResources* vulkan_shared_resources, struct FrameResource* frame_resource);
 
+VulkanMeshResource* vulkan_shared_resources_get_mesh(VulkanSharedResources* vulkan_shared_resources, VulkanMeshType vulkan_mesh_type);
+
 #endif // VRSD_VulkanSharedResources_h_

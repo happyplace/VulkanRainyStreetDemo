@@ -400,3 +400,15 @@ uint32_t vulkan_shared_resources_get_frame_buffer_offset(VulkanSharedResources* 
 {
     return static_cast<uint32_t>(vulkan_shared_resources->frame_alignment_size * frame_resource->index);
 }
+
+VulkanMeshResource* vulkan_shared_resources_get_mesh(VulkanSharedResources* vulkan_shared_resources, VulkanMeshType vulkan_mesh_type)
+{
+    uint32_t vulkan_mesh_type_index = static_cast<uint32_t>(vulkan_mesh_type);
+    if (vulkan_mesh_type_index >= static_cast<uint32_t>(VulkanMeshType::COUNT))
+    {
+        SDL_assert(false);
+        return nullptr;
+    }
+
+    return &vulkan_shared_resources->mesh_resources[vulkan_mesh_type_index];
+}
