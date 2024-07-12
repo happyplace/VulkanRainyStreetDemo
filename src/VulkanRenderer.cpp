@@ -850,10 +850,48 @@ bool vulkan_renderer_init_vma_allocator(VulkanRenderer* vulkan_renderer)
     return result == VK_SUCCESS;
 }
 
-bool vulkan_renderer_init_shaderc_compiler(VulkanRenderer* vulkan_render)
+bool vulkan_renderer_init_shaderc_compiler(VulkanRenderer* vulkan_renderer)
 {
-    vulkan_render->shaderc_compiler = shaderc_compiler_initialize();
-    return vulkan_render->shaderc_compiler != nullptr;
+    vulkan_renderer->shaderc_compiler = shaderc_compiler_initialize();
+    return vulkan_renderer->shaderc_compiler != nullptr;
+}
+
+bool vulkan_renderer_init_transfer_objects(VulkanRenderer* vulkan_renderer)
+{
+    VkFenceCreateInfo fence_create_info;
+    fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fence_create_info.pNext = nullptr;
+    fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    VkResult result = vkCreateFence(vulkan_renderer->device, &fence_create_info, nullptr, &vulkan_renderer->transfer_fence);
+    if (result != VK_SUCCESS)
+    {
+        return false;
+    }
+
+    VkCommandPoolCreateInfo command_pool_create_info;
+    command_pool_create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    command_pool_create_info.pNext = nullptr;
+    command_pool_create_info.flags = 0;
+    command_pool_create_info.queueFamilyIndex = vulkan_renderer->graphics_queue_index;
+    result = vkCreateCommandPool(vulkan_renderer->device, &command_pool_create_info, nullptr, &vulkan_renderer->transfer_command_pool);
+    if (result != VK_SUCCESS)
+    {
+        return false;
+    }
+
+    VkCommandBufferAllocateInfo command_buffer_allocate_info;
+    command_buffer_allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    command_buffer_allocate_info.pNext = nullptr;
+    command_buffer_allocate_info.commandPool = vulkan_renderer->transfer_command_pool;
+    command_buffer_allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    command_buffer_allocate_info.commandBufferCount = 1;
+    result = vkAllocateCommandBuffers(vulkan_renderer->device, &command_buffer_allocate_info, &vulkan_renderer->transfer_command_buffer);
+    if (result != VK_SUCCESS)
+    {
+        return false;
+    }
+
+    return true;
 }
 
 VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window)
@@ -903,6 +941,12 @@ VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window)
     }
 
     if (!vulkan_renderer_init_shaderc_compiler(vulkan_renderer))
+    {
+        vulkan_renderer_destroy(vulkan_renderer);
+        return nullptr;
+    }
+
+    if (!vulkan_renderer_init_transfer_objects(vulkan_renderer))
     {
         vulkan_renderer_destroy(vulkan_renderer);
         return nullptr;
@@ -1024,12 +1068,31 @@ void vulkan_renderer_destroy_shaderc_compiler(VulkanRenderer* vulkan_renderer)
     }
 }
 
+void vulkan_renderer_destroy_transfer_objects(VulkanRenderer* vulkan_renderer)
+{
+    if (vulkan_renderer->transfer_fence)
+    {
+        vkDestroyFence(vulkan_renderer->device, vulkan_renderer->transfer_fence, nullptr);
+    }
+
+    if (vulkan_renderer->transfer_command_buffer)
+    {
+        vkFreeCommandBuffers(vulkan_renderer->device, vulkan_renderer->transfer_command_pool, 1, &vulkan_renderer->transfer_command_buffer);
+    }
+
+    if (vulkan_renderer->transfer_command_pool)
+    {
+        vkDestroyCommandPool(vulkan_renderer->device, vulkan_renderer->transfer_command_pool, nullptr);
+    }
+}
+
 void vulkan_renderer_destroy(VulkanRenderer* vulkan_renderer)
 {
     SDL_assert(vulkan_renderer);
 
     vulkan_renderer_wait_device_idle(vulkan_renderer);
 
+    vulkan_renderer_destroy_transfer_objects(vulkan_renderer);
     vulkan_renderer_destroy_shaderc_compiler(vulkan_renderer);
     vulkan_renderer_destroy_vma_allocator(vulkan_renderer);
     vulkan_renderer_destroy_framebuffers(vulkan_renderer);
