@@ -11,7 +11,7 @@
 struct VkAllocationCallbacks;
 VK_DEFINE_HANDLE(VmaAllocator);
 
-static VkAllocationCallbacks* s_allocator = nullptr;
+constexpr VkAllocationCallbacks* s_allocator = nullptr;
 
 #define VK_ASSERT(X) SDL_assert(VK_SUCCESS == X)
 
