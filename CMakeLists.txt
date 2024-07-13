@@ -52,8 +52,8 @@ set(vrsd-src
     "src/GeometryLoader.cpp"
 )
 
-include_directories("external/imgui-docking")
-include_directories("external/imgui-docking/backends")
+include_directories(SYSTEM "external/imgui-docking")
+include_directories(SYSTEM "external/imgui-docking/backends")
 if (${ENABLE_IMGUI})
     set(vrsd-src ${vrsd-src}
         "external/imgui-docking/imgui.cpp"
@@ -65,15 +65,14 @@ if (${ENABLE_IMGUI})
     )
 endif()
 
-include_directories("external/VulkanMemoryAllocator/include")
+include_directories(SYSTEM "external/VulkanMemoryAllocator/include")
 set(vrsd-src ${vrsd-src}
     "src/VmaUsage.cpp"
 )
 
-include_directories("external/DirectXMath/Inc")
-
 add_definitions(-D_XM_NO_XMVECTOR_OVERLOADS_)
-include_directories("external/dotnet_runtime/include")
+include_directories(SYSTEM "external/DirectXMath/Inc")
+include_directories(SYSTEM "external/dotnet_runtime/include")
 
 if (${CMAKE_C_COMPILER_ID} STREQUAL "MSVC")
     add_executable(VulkanRainyStreetDemo WIN32 ${vrsd-src})
@@ -90,11 +89,11 @@ elseif (${CMAKE_C_COMPILER_ID} STREQUAL "MSVC")
 endif()
 
 find_package(SDL2 REQUIRED)
-include_directories(${SDL2_INCLUDE_DIR})
+include_directories(SYSTEM ${SDL2_INCLUDE_DIR})
 target_link_libraries(VulkanRainyStreetDemo ${SDL2_LIBRARY} ${SDL2MAIN_LIBRARY})
 
 find_package(Vulkan REQUIRED)
-include_directories(${Vulkan_INCLUDE_DIRS})
+include_directories(SYSTEM ${Vulkan_INCLUDE_DIRS})
 target_link_libraries(VulkanRainyStreetDemo ${Vulkan_LIBRARIES})
 
 set(SHADERC_SKIP_TESTS YES)
