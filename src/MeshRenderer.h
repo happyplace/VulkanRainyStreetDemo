@@ -9,7 +9,7 @@ struct MeshRenderer;
 
 struct VRSD_ALIGN(16) Vulkan_MeshRendererObjectBuffer
 {
-    DirectX::XMFLOAT4X4 world;
+    DirectX::XMFLOAT4X4 world_view_proj;
 };
 
 MeshRenderer* mesh_renderer_init(struct Game* game);

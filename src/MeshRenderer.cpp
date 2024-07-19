@@ -32,7 +32,7 @@ struct MeshRenderer
     VkPipeline pipeline = VK_NULL_HANDLE;
 };
 
-constexpr uint32_t c_mesh_renderer_desriptor_count = 4;
+constexpr uint32_t c_mesh_renderer_desriptor_count = 1;//4;
 constexpr uint32_t c_mesh_renderer_max_mesh_object = 500;
 
 void mesh_renderer_destroy_object_buffer(MeshRenderer* mesh_renderer, Game* game)
@@ -157,17 +157,17 @@ bool mesh_renderer_init_object_buffer(MeshRenderer* mesh_renderer, Game* game)
 
 bool mesh_renderer_init_descriptor_set(MeshRenderer* mesh_renderer, Game* game)
 {
-    constexpr uint32_t max_render_object_count = 1;
+    //constexpr uint32_t max_render_object_count = 1;
 
     std::array<VkDescriptorPoolSize, c_mesh_renderer_desriptor_count> descriptor_pool_size;
     descriptor_pool_size[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     descriptor_pool_size[0].descriptorCount = 1;
-    descriptor_pool_size[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-    descriptor_pool_size[1].descriptorCount = 1;
-    descriptor_pool_size[2].type = VK_DESCRIPTOR_TYPE_SAMPLER;
-    descriptor_pool_size[2].descriptorCount = 1;
-    descriptor_pool_size[3].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-    descriptor_pool_size[3].descriptorCount = max_render_object_count;
+    // descriptor_pool_size[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    // descriptor_pool_size[1].descriptorCount = 1;
+    // descriptor_pool_size[2].type = VK_DESCRIPTOR_TYPE_SAMPLER;
+    // descriptor_pool_size[2].descriptorCount = 1;
+    // descriptor_pool_size[3].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    // descriptor_pool_size[3].descriptorCount = max_render_object_count;
 
     VkDescriptorPoolCreateInfo descriptor_pool_create_info;
     descriptor_pool_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -212,54 +212,54 @@ bool mesh_renderer_init_descriptor_set(MeshRenderer* mesh_renderer, Game* game)
         return false;
     }
 
-    VkDescriptorSetLayoutBinding object_buffer_descriptor_set_layout_binding;
-    object_buffer_descriptor_set_layout_binding.binding = 0;
-    object_buffer_descriptor_set_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-    object_buffer_descriptor_set_layout_binding.descriptorCount = 1;
-    object_buffer_descriptor_set_layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-    object_buffer_descriptor_set_layout_binding.pImmutableSamplers = nullptr;
+    // VkDescriptorSetLayoutBinding object_buffer_descriptor_set_layout_binding;
+    // object_buffer_descriptor_set_layout_binding.binding = 0;
+    // object_buffer_descriptor_set_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    // object_buffer_descriptor_set_layout_binding.descriptorCount = 1;
+    // object_buffer_descriptor_set_layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    // object_buffer_descriptor_set_layout_binding.pImmutableSamplers = nullptr;
 
-    descriptor_set_layout_create_info.pBindings = &object_buffer_descriptor_set_layout_binding;
+    // descriptor_set_layout_create_info.pBindings = &object_buffer_descriptor_set_layout_binding;
 
-    result = vkCreateDescriptorSetLayout(game->vulkan_renderer->device, &descriptor_set_layout_create_info, s_allocator, &mesh_renderer->descriptor_set_layouts[1]);
-    if (result != VK_SUCCESS)
-    {
-        VK_ASSERT(result);
-        return false;
-    }
+    // result = vkCreateDescriptorSetLayout(game->vulkan_renderer->device, &descriptor_set_layout_create_info, s_allocator, &mesh_renderer->descriptor_set_layouts[1]);
+    // if (result != VK_SUCCESS)
+    // {
+    //     VK_ASSERT(result);
+    //     return false;
+    // }
 
-    VkDescriptorSetLayoutBinding sampler_descriptor_set_layout_binding;
-    sampler_descriptor_set_layout_binding.binding = 0;
-    sampler_descriptor_set_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-    sampler_descriptor_set_layout_binding.descriptorCount = 1;
-    sampler_descriptor_set_layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-    VkSampler linear_sampler = vulkan_shared_resources_get_sampler(game->shared_resources, VulkanSharedResourcesSamplerType::Linear);
-    sampler_descriptor_set_layout_binding.pImmutableSamplers = &linear_sampler;
+    // VkDescriptorSetLayoutBinding sampler_descriptor_set_layout_binding;
+    // sampler_descriptor_set_layout_binding.binding = 0;
+    // sampler_descriptor_set_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+    // sampler_descriptor_set_layout_binding.descriptorCount = 1;
+    // sampler_descriptor_set_layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    // VkSampler linear_sampler = vulkan_shared_resources_get_sampler(game->shared_resources, VulkanSharedResourcesSamplerType::Linear);
+    // sampler_descriptor_set_layout_binding.pImmutableSamplers = &linear_sampler;
 
-    descriptor_set_layout_create_info.pBindings = &sampler_descriptor_set_layout_binding;
+    // descriptor_set_layout_create_info.pBindings = &sampler_descriptor_set_layout_binding;
 
-    result = vkCreateDescriptorSetLayout(game->vulkan_renderer->device, &descriptor_set_layout_create_info, s_allocator, &mesh_renderer->descriptor_set_layouts[2]);
-    if (result != VK_SUCCESS)
-    {
-        VK_ASSERT(result);
-        return false;
-    }
+    // result = vkCreateDescriptorSetLayout(game->vulkan_renderer->device, &descriptor_set_layout_create_info, s_allocator, &mesh_renderer->descriptor_set_layouts[2]);
+    // if (result != VK_SUCCESS)
+    // {
+    //     VK_ASSERT(result);
+    //     return false;
+    // }
 
-    VkDescriptorSetLayoutBinding sampled_image_descriptor_set_layout_binding;
-    sampled_image_descriptor_set_layout_binding.binding = 0;
-    sampled_image_descriptor_set_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-    sampled_image_descriptor_set_layout_binding.descriptorCount = max_render_object_count;
-    sampled_image_descriptor_set_layout_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-    sampled_image_descriptor_set_layout_binding.pImmutableSamplers = nullptr;
+    // VkDescriptorSetLayoutBinding sampled_image_descriptor_set_layout_binding;
+    // sampled_image_descriptor_set_layout_binding.binding = 0;
+    // sampled_image_descriptor_set_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    // sampled_image_descriptor_set_layout_binding.descriptorCount = max_render_object_count;
+    // sampled_image_descriptor_set_layout_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    // sampled_image_descriptor_set_layout_binding.pImmutableSamplers = nullptr;
 
-    descriptor_set_layout_create_info.pBindings = &sampled_image_descriptor_set_layout_binding;
+    // descriptor_set_layout_create_info.pBindings = &sampled_image_descriptor_set_layout_binding;
 
-    result = vkCreateDescriptorSetLayout(game->vulkan_renderer->device, &descriptor_set_layout_create_info, s_allocator, &mesh_renderer->descriptor_set_layouts[3]);
-    if (result != VK_SUCCESS)
-    {
-        VK_ASSERT(result);
-        return false;
-    }
+    // result = vkCreateDescriptorSetLayout(game->vulkan_renderer->device, &descriptor_set_layout_create_info, s_allocator, &mesh_renderer->descriptor_set_layouts[3]);
+    // if (result != VK_SUCCESS)
+    // {
+    //     VK_ASSERT(result);
+    //     return false;
+    // }
 
     mesh_renderer->descriptor_sets = new VkDescriptorSet[c_mesh_renderer_desriptor_count];
     for (uint32_t i = 0; i < c_mesh_renderer_desriptor_count; ++i)
@@ -282,9 +282,9 @@ bool mesh_renderer_init_descriptor_set(MeshRenderer* mesh_renderer, Game* game)
     }
 
     VkDescriptorBufferInfo frame_buffer_descriptor_buffer_info;
-    frame_buffer_descriptor_buffer_info.buffer = game->shared_resources->frame_buffer;
+    frame_buffer_descriptor_buffer_info.buffer = mesh_renderer->object_buffer; //game->shared_resources->frame_buffer;
     frame_buffer_descriptor_buffer_info.offset = 0;
-    frame_buffer_descriptor_buffer_info.range= sizeof(Vulkan_FrameBuffer);
+    frame_buffer_descriptor_buffer_info.range = sizeof(Vulkan_MeshRendererObjectBuffer); //sizeof(Vulkan_FrameBuffer);
 
     VkWriteDescriptorSet frame_buffer_write_descriptor_set;
     frame_buffer_write_descriptor_set.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -300,24 +300,24 @@ bool mesh_renderer_init_descriptor_set(MeshRenderer* mesh_renderer, Game* game)
 
     vkUpdateDescriptorSets(game->vulkan_renderer->device, 1, &frame_buffer_write_descriptor_set, 0, nullptr);
 
-    VkDescriptorBufferInfo object_buffer_descriptor_buffer_info;
-    object_buffer_descriptor_buffer_info.buffer = mesh_renderer->object_buffer;
-    object_buffer_descriptor_buffer_info.offset = 0;
-    object_buffer_descriptor_buffer_info.range = sizeof(Vulkan_MeshRendererObjectBuffer);
+    // VkDescriptorBufferInfo object_buffer_descriptor_buffer_info;
+    // object_buffer_descriptor_buffer_info.buffer = mesh_renderer->object_buffer;
+    // object_buffer_descriptor_buffer_info.offset = 0;
+    // object_buffer_descriptor_buffer_info.range = sizeof(Vulkan_MeshRendererObjectBuffer);
 
-    VkWriteDescriptorSet object_buffer_write_descriptor_set;
-    object_buffer_write_descriptor_set.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    object_buffer_write_descriptor_set.pNext = nullptr;
-    object_buffer_write_descriptor_set.dstSet = mesh_renderer->descriptor_sets[1];
-    object_buffer_write_descriptor_set.dstBinding = 0;
-    object_buffer_write_descriptor_set.dstArrayElement = 0;
-    object_buffer_write_descriptor_set.descriptorCount = 1;
-    object_buffer_write_descriptor_set.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-    object_buffer_write_descriptor_set.pBufferInfo = &object_buffer_descriptor_buffer_info;
-    object_buffer_write_descriptor_set.pImageInfo = nullptr;
-    object_buffer_write_descriptor_set.pTexelBufferView = nullptr;
+    // VkWriteDescriptorSet object_buffer_write_descriptor_set;
+    // object_buffer_write_descriptor_set.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    // object_buffer_write_descriptor_set.pNext = nullptr;
+    // object_buffer_write_descriptor_set.dstSet = mesh_renderer->descriptor_sets[1];
+    // object_buffer_write_descriptor_set.dstBinding = 0;
+    // object_buffer_write_descriptor_set.dstArrayElement = 0;
+    // object_buffer_write_descriptor_set.descriptorCount = 1;
+    // object_buffer_write_descriptor_set.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    // object_buffer_write_descriptor_set.pBufferInfo = &object_buffer_descriptor_buffer_info;
+    // object_buffer_write_descriptor_set.pImageInfo = nullptr;
+    // object_buffer_write_descriptor_set.pTexelBufferView = nullptr;
 
-    vkUpdateDescriptorSets(game->vulkan_renderer->device, 1, &object_buffer_write_descriptor_set, 0, nullptr);
+    // vkUpdateDescriptorSets(game->vulkan_renderer->device, 1, &object_buffer_write_descriptor_set, 0, nullptr);
 
     return true;
 }
@@ -398,21 +398,21 @@ bool mesh_renderer_init_pipeline(MeshRenderer* mesh_renderer, Game* game)
     pipeline_shader_stage_create_infos[1].pName = "main";
     pipeline_shader_stage_create_infos[1].pSpecializationInfo = nullptr;
 
-    std::array<VkVertexInputAttributeDescription, 3> vertex_input_attribute_descriptions;
+    std::array<VkVertexInputAttributeDescription, /*3*/1> vertex_input_attribute_descriptions;
     vertex_input_attribute_descriptions[0].location = 0;
     vertex_input_attribute_descriptions[0].binding = 0;
     vertex_input_attribute_descriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
     vertex_input_attribute_descriptions[0].offset = offsetof(Vertex, position);
 
-    vertex_input_attribute_descriptions[1].location = 1;
-    vertex_input_attribute_descriptions[1].binding = 0;
-    vertex_input_attribute_descriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-    vertex_input_attribute_descriptions[1].offset = offsetof(Vertex, normal);
+    // vertex_input_attribute_descriptions[1].location = 1;
+    // vertex_input_attribute_descriptions[1].binding = 0;
+    // vertex_input_attribute_descriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+    // vertex_input_attribute_descriptions[1].offset = offsetof(Vertex, normal);
 
-    vertex_input_attribute_descriptions[2].location = 2;
-    vertex_input_attribute_descriptions[2].binding = 0;
-    vertex_input_attribute_descriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-    vertex_input_attribute_descriptions[2].offset = offsetof(Vertex, texture);
+    // vertex_input_attribute_descriptions[2].location = 2;
+    // vertex_input_attribute_descriptions[2].binding = 0;
+    // vertex_input_attribute_descriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+    // vertex_input_attribute_descriptions[2].offset = offsetof(Vertex, texture);
 
     VkVertexInputBindingDescription vertex_input_binding_description;
     vertex_input_binding_description.binding = 0;
@@ -640,6 +640,8 @@ uint32_t mesh_renderer_get_object_buffer_offset(MeshRenderer* mesh_renderer, str
 
 void mesh_renderer_render(MeshRenderer* mesh_renderer, struct FrameResource* frame_resource, struct Game* game)
 {
+    using namespace DirectX;
+
     vkCmdBindPipeline(frame_resource->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_renderer->pipeline);
 
     VkViewport viewport;
@@ -658,16 +660,37 @@ void mesh_renderer_render(MeshRenderer* mesh_renderer, struct FrameResource* fra
     scissor.extent.height = static_cast<float>(game->vulkan_renderer->swapchain_height);
     vkCmdSetScissor(frame_resource->command_buffer, 0, 1, &scissor);
 
-    uint32_t frame_buffer_offset = vulkan_shared_resources_get_frame_buffer_offset(game->shared_resources, frame_resource);
-    vkCmdBindDescriptorSets(frame_resource->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_renderer->pipeline_layout, 0, 1,
-        &mesh_renderer->descriptor_sets[0], 1, &frame_buffer_offset);
-    vkCmdBindDescriptorSets(frame_resource->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_renderer->pipeline_layout, 2, 1,
-        &mesh_renderer->descriptor_sets[2], 0, nullptr);
-    vkCmdBindDescriptorSets(frame_resource->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_renderer->pipeline_layout, 3, 1,
-        &mesh_renderer->descriptor_sets[3], 0, nullptr);
+    // uint32_t frame_buffer_offset = vulkan_shared_resources_get_frame_buffer_offset(game->shared_resources, frame_resource);
+    // vkCmdBindDescriptorSets(frame_resource->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_renderer->pipeline_layout, 0, 1,
+    //     &mesh_renderer->descriptor_sets[0], 1, &frame_buffer_offset);
+    // vkCmdBindDescriptorSets(frame_resource->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_renderer->pipeline_layout, 2, 1,
+    //     &mesh_renderer->descriptor_sets[2], 0, nullptr);
+    // vkCmdBindDescriptorSets(frame_resource->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_renderer->pipeline_layout, 3, 1,
+    //     &mesh_renderer->descriptor_sets[3], 0, nullptr);
 
     Vulkan_MeshRendererObjectBuffer object_buffer;
-    DirectX::XMStoreFloat4x4(&object_buffer.world, DirectX::XMMatrixIdentity());
+
+    XMVECTOR position = XMVectorSet(0.0f, 0.0f, 10.0f, 1.0f);
+    XMVECTOR target = XMVectorZero();
+    XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+
+    float width = static_cast<float>(game->vulkan_renderer->swapchain_width);
+    float height = static_cast<float>(game->vulkan_renderer->swapchain_height);
+    float aspect_ratio = width / height;
+
+    XMMATRIX view = XMMatrixLookAtLH(position, target, up);
+    XMMATRIX proj = XMMatrixPerspectiveFovLH(
+        XMConvertToRadians(80.0f),
+        aspect_ratio,
+        0.1f,
+        10000.0f);
+
+    XMMATRIX world = XMMatrixIdentity();
+
+    world = XMMatrixMultiply(world, view);
+    world = XMMatrixMultiply(world, proj);
+
+    XMStoreFloat4x4(&object_buffer.world_view_proj, world);
 
     VulkanMeshType vulkan_mesh_type = VulkanMeshType::Cube;
 
@@ -680,12 +703,17 @@ void mesh_renderer_render(MeshRenderer* mesh_renderer, struct FrameResource* fra
         object_buffer_offset,
         static_cast<VkDeviceSize>(sizeof(Vulkan_MeshRendererObjectBuffer))));
 
-    vkCmdBindDescriptorSets(frame_resource->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_renderer->pipeline_layout, 1, 1,
-        &mesh_renderer->descriptor_sets[1], 1, &object_buffer_offset);
+    // vkCmdBindDescriptorSets(frame_resource->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_renderer->pipeline_layout, 1, 1,
+    //     &mesh_renderer->descriptor_sets[1], 1, &object_buffer_offset);
+
+    vkCmdBindDescriptorSets(frame_resource->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_renderer->pipeline_layout, 0, 1,
+        &mesh_renderer->descriptor_sets[0], 1, &object_buffer_offset);
 
     VulkanMeshResource* vulkan_mesh_resource = vulkan_shared_resources_get_mesh(game->shared_resources, vulkan_mesh_type);
 
     const VkDeviceSize vertex_offset = 0;
     vkCmdBindVertexBuffers(frame_resource->command_buffer, 0, 1, &vulkan_mesh_resource->vertex_buffer, &vertex_offset);
     vkCmdBindIndexBuffer(frame_resource->command_buffer, vulkan_mesh_resource->index_buffer, 0, VK_INDEX_TYPE_UINT32);
+
+    vkCmdDrawIndexed(frame_resource->command_buffer, vulkan_mesh_resource->index_count, 1, 0, 0, 0);
 }
