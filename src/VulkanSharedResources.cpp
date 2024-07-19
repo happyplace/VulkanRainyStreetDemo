@@ -296,6 +296,8 @@ bool vulkan_shared_resources_init_mesh_resource_with_geometry(Geometry* geometry
 
     VkDeviceSize index_total_size = sizeof(uint32_t) * geometry->index_count;
 
+    out_vulkan_mesh_resource->index_count = static_cast<uint32_t>(geometry->index_count);
+
     VkBufferCreateInfo index_buffer_create_info;
     index_buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     index_buffer_create_info.pNext = nullptr;
