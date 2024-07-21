@@ -471,7 +471,7 @@ bool mesh_renderer_init_pipeline(MeshRenderer* mesh_renderer, Game* game)
     pipeline_rasterization_state_create_info.depthClampEnable = VK_FALSE;
     pipeline_rasterization_state_create_info.rasterizerDiscardEnable = VK_FALSE;
     pipeline_rasterization_state_create_info.polygonMode = VK_POLYGON_MODE_FILL;
-    pipeline_rasterization_state_create_info.cullMode = VK_CULL_MODE_BACK_BIT;
+    pipeline_rasterization_state_create_info.cullMode = VK_CULL_MODE_NONE;//VK_CULL_MODE_BACK_BIT;
     pipeline_rasterization_state_create_info.frontFace = VK_FRONT_FACE_CLOCKWISE;
     pipeline_rasterization_state_create_info.depthBiasEnable = VK_FALSE;
     pipeline_rasterization_state_create_info.depthBiasConstantFactor = 0.0f;
@@ -678,8 +678,8 @@ void mesh_renderer_render(MeshRenderer* mesh_renderer, struct FrameResource* fra
     float height = static_cast<float>(game->vulkan_renderer->swapchain_height);
     float aspect_ratio = width / height;
 
-    XMMATRIX view = XMMatrixLookAtLH(position, target, up);
-    XMMATRIX proj = XMMatrixPerspectiveFovLH(
+    XMMATRIX view = XMMatrixLookAtRH(position, target, up);
+    XMMATRIX proj = XMMatrixPerspectiveFovRH(
         XMConvertToRadians(80.0f),
         aspect_ratio,
         0.1f,
@@ -687,8 +687,9 @@ void mesh_renderer_render(MeshRenderer* mesh_renderer, struct FrameResource* fra
 
     XMMATRIX world = XMMatrixIdentity();
 
-    world = XMMatrixMultiply(world, view);
-    world = XMMatrixMultiply(world, proj);
+    world = view * proj;
+
+    world = XMMatrixTranspose(world);
 
     XMStoreFloat4x4(&object_buffer.world_view_proj, world);
 

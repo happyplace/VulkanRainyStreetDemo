@@ -24,5 +24,5 @@ layout(location = 0) in vec3 in_positionL;
 void main()
 {
     // Transform to homogeneus clip space
-    vec4(in_positionL, 1.0f) * Object.world_view_proj;
+    gl_Position = vec4(in_positionL, 1.0f) * Object.world_view_proj;
 }
