@@ -526,9 +526,9 @@ bool mesh_renderer_init_pipeline(MeshRenderer* mesh_renderer, Game* game)
 
     VkStencilOpState stencil_op_state_front;
     stencil_op_state_front.failOp = VK_STENCIL_OP_KEEP;
-    stencil_op_state_front.passOp = VK_STENCIL_OP_KEEP;
+    stencil_op_state_front.passOp = VK_STENCIL_OP_REPLACE;
     stencil_op_state_front.depthFailOp = VK_STENCIL_OP_KEEP;
-    stencil_op_state_front.compareOp = VK_COMPARE_OP_NEVER;
+    stencil_op_state_front.compareOp = VK_COMPARE_OP_LESS;
     stencil_op_state_front.compareMask = ~0;
     stencil_op_state_front.writeMask = ~0;
     stencil_op_state_front.reference = 0;
