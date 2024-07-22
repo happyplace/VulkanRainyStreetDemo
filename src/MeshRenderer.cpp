@@ -464,14 +464,16 @@ bool mesh_renderer_init_pipeline(MeshRenderer* mesh_renderer, Game* game)
     pipeline_viewport_state_create_info.scissorCount = 1;
     pipeline_viewport_state_create_info.pScissors = &scissoring;
 
+    constexpr bool wireframe = false;
+
     VkPipelineRasterizationStateCreateInfo pipeline_rasterization_state_create_info;
     pipeline_rasterization_state_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     pipeline_rasterization_state_create_info.pNext = nullptr;
     pipeline_rasterization_state_create_info.flags = 0;
     pipeline_rasterization_state_create_info.depthClampEnable = VK_FALSE;
     pipeline_rasterization_state_create_info.rasterizerDiscardEnable = VK_FALSE;
-    pipeline_rasterization_state_create_info.polygonMode = VK_POLYGON_MODE_FILL;
-    pipeline_rasterization_state_create_info.cullMode = VK_CULL_MODE_NONE;//VK_CULL_MODE_BACK_BIT;
+    pipeline_rasterization_state_create_info.polygonMode = wireframe ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
+    pipeline_rasterization_state_create_info.cullMode = wireframe ? VK_CULL_MODE_NONE : VK_CULL_MODE_BACK_BIT;
     pipeline_rasterization_state_create_info.frontFace = VK_FRONT_FACE_CLOCKWISE;
     pipeline_rasterization_state_create_info.depthBiasEnable = VK_FALSE;
     pipeline_rasterization_state_create_info.depthBiasConstantFactor = 0.0f;
@@ -670,7 +672,7 @@ void mesh_renderer_render(MeshRenderer* mesh_renderer, struct FrameResource* fra
 
     Vulkan_MeshRendererObjectBuffer object_buffer;
 
-    XMVECTOR position = XMVectorSet(0.0f, 0.0f, 10.0f, 1.0f);
+    XMVECTOR position = XMVectorSet(0.0f, 0.0f, 2.0f, 1.0f);
     XMVECTOR target = XMVectorZero();
     XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 
@@ -685,9 +687,9 @@ void mesh_renderer_render(MeshRenderer* mesh_renderer, struct FrameResource* fra
         0.1f,
         10000.0f);
 
-    XMMATRIX world = XMMatrixIdentity();
+    XMMATRIX world = XMMatrixScaling(1.0f, 1.0f, 1.0f) * XMMatrixRotationRollPitchYaw(XMConvertToRadians(0.0f), XMConvertToRadians(45.0f), XMConvertToRadians(0.0f));
 
-    world = view * proj;
+    world = world * view * proj;
 
     world = XMMatrixTranspose(world);
 
