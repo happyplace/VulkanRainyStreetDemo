@@ -1,4 +1,4 @@
-#include "MeshRenderer.h"
+#include "PhongMeshRenderer.h"
 
 #include <array>
 
@@ -337,7 +337,7 @@ bool mesh_renderer_init_compile_vertex_shader(MeshRenderer* mesh_renderer, Game*
 
     bool result = vulkan_renderer_compile_shader(
         game->vulkan_renderer,
-        "data/MeshShader.hlsl",
+        "data/PhongMeshShader.hlsl",
         compile_options,
         shaderc_glsl_vertex_shader,
         mesh_renderer_vertex_entry,
@@ -361,7 +361,7 @@ bool mesh_renderer_init_compile_fragment_shader(MeshRenderer* mesh_renderer, Gam
 
     bool result = vulkan_renderer_compile_shader(
         game->vulkan_renderer,
-        "data/MeshShader.hlsl",
+        "data/PhongMeshShader.hlsl",
         compile_options,
         shaderc_glsl_fragment_shader,
         mesh_renderer_fragment_entry,

@@ -2,7 +2,7 @@
 
 #include <SDL_assert.h>
 
-#include "MeshRenderer.h"
+#include "PhongMeshRenderer.h"
 #include "Game.h"
 
 struct GameMapRenderer

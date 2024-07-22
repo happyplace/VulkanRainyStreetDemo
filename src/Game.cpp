@@ -12,7 +12,7 @@
 #include "GameMap.h"
 #include "GameFrameRender.h"
 #include "ImGuiRenderer.h"
-#include "MeshRenderer.h"
+#include "PhongMeshRenderer.h"
 
 void game_destroy(Game* game)
 {
