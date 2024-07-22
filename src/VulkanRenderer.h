@@ -1,22 +1,19 @@
 #ifndef VRSD_VulkanRenderer_h_
 #define VRSD_VulkanRenderer_h_
 
+#include <cstddef>
 #include <cstdint>
 
 #include <vulkan/vulkan_core.h>
 
+#include "shaderc/shaderc.h"
+
 struct VkAllocationCallbacks;
 VK_DEFINE_HANDLE(VmaAllocator);
 
-static VkAllocationCallbacks* s_allocator = nullptr;
+constexpr VkAllocationCallbacks* s_allocator = nullptr;
 
 #define VK_ASSERT(X) SDL_assert(VK_SUCCESS == X)
-
-enum class VulkanRendererSamplerType : uint8_t
-{
-    Linear,
-    COUNT,
-};
 
 struct VulkanRenderer
 {
@@ -43,8 +40,11 @@ struct VulkanRenderer
     VkImageView depth_stencil_image_view = VK_NULL_HANDLE;
     VkRenderPass render_pass = VK_NULL_HANDLE;
     VkFramebuffer* framebuffers = nullptr;
-    VkSampler* samplers = nullptr;
     VmaAllocator vma_allocator = VK_NULL_HANDLE;
+    shaderc_compiler_t shaderc_compiler = nullptr;
+    VkCommandPool transfer_command_pool = VK_NULL_HANDLE;
+    VkCommandBuffer transfer_command_buffer = VK_NULL_HANDLE;
+    VkFence transfer_fence = VK_NULL_HANDLE;
 };
 
 VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window);
@@ -53,9 +53,8 @@ void vulkan_renderer_destroy(VulkanRenderer* vulkan_renderer);
 void vulkan_renderer_on_window_resized(VulkanRenderer* vulkan_renderer, struct GameWindow* game_window);
 
 bool vulkan_renderer_different_compute_and_graphics_queue(VulkanRenderer* vulkan_renderer, struct GameWindow* game_window);
-
 void vulkan_renderer_wait_device_idle(VulkanRenderer* vulkan_renderer);
-
-VkSampler vulkan_renderer_get_sampler(VulkanRenderer* vulkan_renderer, VulkanRendererSamplerType sampler_type);
+VkDeviceSize vulkan_renderer_calculate_uniform_buffer_size(VulkanRenderer* vulkan_renderer, size_t size);
+bool vulkan_renderer_compile_shader(VulkanRenderer* vulkan_renderer, const char* path, shaderc_compile_options_t compile_options, shaderc_shader_kind shader_kind,  const char* entry_point, VkShaderModule* out_shader_module);
 
 #endif // VRSD_VulkanRenderer_h_

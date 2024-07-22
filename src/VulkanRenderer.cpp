@@ -3,7 +3,11 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cmath>
+#include <shaderc/shaderc.h>
 #include <vector>
+#include <iostream>
+#include <fstream>
 
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan.h>
@@ -17,7 +21,6 @@
 #include "Game.h"
 #include "GameWindow.h"
 #include "VulkanFrameResources.h" // needed for VULKAN_FRAME_RESOURCES_FRAME_RESOURCE_COUNT
-#include "vk_mem_alloc.h"
 
 #ifdef VK_DEBUG
 static VKAPI_ATTR VkBool32 VKAPI_CALL vulkan_renderer_debug_callback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT /*type*/,
@@ -825,52 +828,6 @@ bool vulkan_renderer_init_frame_buffers(VulkanRenderer* vulkan_renderer)
     return true;
 }
 
-bool vulkan_renderer_init_samplers(VulkanRenderer* vulkan_renderer)
-{
-    vulkan_renderer->samplers = new VkSampler[static_cast<size_t>(VulkanRendererSamplerType::COUNT)];
-    for (size_t i = 0; i < static_cast<size_t>(VulkanRendererSamplerType::COUNT); ++i)
-    {
-        vulkan_renderer->samplers[i] = VK_NULL_HANDLE;
-    }
-
-    VkPhysicalDeviceFeatures physical_device_features;
-    vkGetPhysicalDeviceFeatures(vulkan_renderer->physical_device, &physical_device_features);
-
-    VkPhysicalDeviceProperties physical_device_properties;
-    vkGetPhysicalDeviceProperties(vulkan_renderer->physical_device, &physical_device_properties);
-
-    {
-        VkSamplerCreateInfo sampler_create_info;
-        sampler_create_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        sampler_create_info.pNext = nullptr;
-        sampler_create_info.flags = 0;
-        sampler_create_info.magFilter = VK_FILTER_LINEAR;
-        sampler_create_info.minFilter = VK_FILTER_LINEAR;
-        sampler_create_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        sampler_create_info.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        sampler_create_info.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        sampler_create_info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        sampler_create_info.mipLodBias = 0.0f;
-        sampler_create_info.anisotropyEnable = physical_device_features.samplerAnisotropy ? VK_TRUE : VK_FALSE;
-        sampler_create_info.maxAnisotropy = physical_device_features.samplerAnisotropy ? physical_device_properties.limits.maxSamplerAnisotropy : 1.0f;
-        sampler_create_info.compareEnable = VK_FALSE;
-        sampler_create_info.compareOp = VK_COMPARE_OP_NEVER;
-        sampler_create_info.minLod = 0.0f;
-        sampler_create_info.maxLod = 0.0f;
-        sampler_create_info.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-        sampler_create_info.unnormalizedCoordinates = VK_FALSE;
-
-        VkResult result = vkCreateSampler(vulkan_renderer->device, &sampler_create_info, s_allocator,
-            &vulkan_renderer->samplers[static_cast<size_t>(VulkanRendererSamplerType::Linear)]);
-        if (result != VK_SUCCESS)
-        {
-            return false;
-        }
-    }
-
-    return true;
-}
-
 bool vulkan_renderer_init_vma_allocator(VulkanRenderer* vulkan_renderer)
 {
     VmaAllocatorCreateInfo allocator_create_info;
@@ -890,6 +847,50 @@ bool vulkan_renderer_init_vma_allocator(VulkanRenderer* vulkan_renderer)
 
     VkResult result = vmaCreateAllocator(&allocator_create_info, &vulkan_renderer->vma_allocator);
     return result == VK_SUCCESS;
+}
+
+bool vulkan_renderer_init_shaderc_compiler(VulkanRenderer* vulkan_renderer)
+{
+    vulkan_renderer->shaderc_compiler = shaderc_compiler_initialize();
+    return vulkan_renderer->shaderc_compiler != nullptr;
+}
+
+bool vulkan_renderer_init_transfer_objects(VulkanRenderer* vulkan_renderer)
+{
+    VkFenceCreateInfo fence_create_info;
+    fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fence_create_info.pNext = nullptr;
+    fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    VkResult result = vkCreateFence(vulkan_renderer->device, &fence_create_info, nullptr, &vulkan_renderer->transfer_fence);
+    if (result != VK_SUCCESS)
+    {
+        return false;
+    }
+
+    VkCommandPoolCreateInfo command_pool_create_info;
+    command_pool_create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    command_pool_create_info.pNext = nullptr;
+    command_pool_create_info.flags = 0;
+    command_pool_create_info.queueFamilyIndex = vulkan_renderer->graphics_queue_index;
+    result = vkCreateCommandPool(vulkan_renderer->device, &command_pool_create_info, nullptr, &vulkan_renderer->transfer_command_pool);
+    if (result != VK_SUCCESS)
+    {
+        return false;
+    }
+
+    VkCommandBufferAllocateInfo command_buffer_allocate_info;
+    command_buffer_allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    command_buffer_allocate_info.pNext = nullptr;
+    command_buffer_allocate_info.commandPool = vulkan_renderer->transfer_command_pool;
+    command_buffer_allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    command_buffer_allocate_info.commandBufferCount = 1;
+    result = vkAllocateCommandBuffers(vulkan_renderer->device, &command_buffer_allocate_info, &vulkan_renderer->transfer_command_buffer);
+    if (result != VK_SUCCESS)
+    {
+        return false;
+    }
+
+    return true;
 }
 
 VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window)
@@ -932,13 +933,19 @@ VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window)
         return nullptr;
     }
 
-    if (!vulkan_renderer_init_samplers(vulkan_renderer))
+    if (!vulkan_renderer_init_vma_allocator(vulkan_renderer))
     {
         vulkan_renderer_destroy(vulkan_renderer);
         return nullptr;
     }
 
-    if (!vulkan_renderer_init_vma_allocator(vulkan_renderer))
+    if (!vulkan_renderer_init_shaderc_compiler(vulkan_renderer))
+    {
+        vulkan_renderer_destroy(vulkan_renderer);
+        return nullptr;
+    }
+
+    if (!vulkan_renderer_init_transfer_objects(vulkan_renderer))
     {
         vulkan_renderer_destroy(vulkan_renderer);
         return nullptr;
@@ -1044,28 +1051,37 @@ void vulkan_renderer_destroy_framebuffers(VulkanRenderer* vulkan_renderer)
     }
 }
 
-void vulkan_renderer_destroy_samplers(VulkanRenderer* vulkan_renderer)
-{
-    if (vulkan_renderer->samplers != nullptr)
-    {
-        for (size_t i = 0; i < static_cast<size_t>(VulkanRendererSamplerType::COUNT); ++i)
-        {
-            if (vulkan_renderer->samplers[i] != VK_NULL_HANDLE)
-            {
-                vkDestroySampler(vulkan_renderer->device, vulkan_renderer->samplers[i], s_allocator);
-            }
-        }
-
-        delete[] vulkan_renderer->samplers;
-        vulkan_renderer->samplers = nullptr;
-    }
-}
-
 void vulkan_renderer_destroy_vma_allocator(VulkanRenderer* vulkan_renderer)
 {
     if (vulkan_renderer->vma_allocator != VK_NULL_HANDLE)
     {
         vmaDestroyAllocator(vulkan_renderer->vma_allocator);
+    }
+}
+
+void vulkan_renderer_destroy_shaderc_compiler(VulkanRenderer* vulkan_renderer)
+{
+    if (vulkan_renderer->shaderc_compiler != nullptr)
+    {
+        shaderc_compiler_release(vulkan_renderer->shaderc_compiler);
+    }
+}
+
+void vulkan_renderer_destroy_transfer_objects(VulkanRenderer* vulkan_renderer)
+{
+    if (vulkan_renderer->transfer_fence)
+    {
+        vkDestroyFence(vulkan_renderer->device, vulkan_renderer->transfer_fence, nullptr);
+    }
+
+    if (vulkan_renderer->transfer_command_buffer)
+    {
+        vkFreeCommandBuffers(vulkan_renderer->device, vulkan_renderer->transfer_command_pool, 1, &vulkan_renderer->transfer_command_buffer);
+    }
+
+    if (vulkan_renderer->transfer_command_pool)
+    {
+        vkDestroyCommandPool(vulkan_renderer->device, vulkan_renderer->transfer_command_pool, nullptr);
     }
 }
 
@@ -1075,8 +1091,9 @@ void vulkan_renderer_destroy(VulkanRenderer* vulkan_renderer)
 
     vulkan_renderer_wait_device_idle(vulkan_renderer);
 
+    vulkan_renderer_destroy_transfer_objects(vulkan_renderer);
+    vulkan_renderer_destroy_shaderc_compiler(vulkan_renderer);
     vulkan_renderer_destroy_vma_allocator(vulkan_renderer);
-    vulkan_renderer_destroy_samplers(vulkan_renderer);
     vulkan_renderer_destroy_framebuffers(vulkan_renderer);
     vulkan_renderer_destroy_render_pass(vulkan_renderer);
     vulkan_renderer_destroy_depth_stencil(vulkan_renderer);
@@ -1117,4 +1134,85 @@ void vulkan_renderer_wait_device_idle(VulkanRenderer* vulkan_renderer)
     {
         vkDeviceWaitIdle(vulkan_renderer->device);
     }
+}
+
+VkDeviceSize vulkan_renderer_calculate_uniform_buffer_size(VulkanRenderer* vulkan_renderer, size_t size)
+{
+    return
+        vulkan_renderer->min_uniform_buffer_offset_alignment *
+        static_cast<VkDeviceSize>(ceil(static_cast<float>(size) / vulkan_renderer->min_uniform_buffer_offset_alignment));
+}
+
+bool vulkan_renderer_compile_shader(VulkanRenderer* vulkan_renderer, const char* path, shaderc_compile_options_t compile_options, shaderc_shader_kind shader_kind, const char* entry_point, VkShaderModule* out_shader_module)
+{
+    char* shader_src_file = nullptr;
+    size_t shader_size = 0;
+
+    std::ifstream shader_file(path, std::ios::in | std::ios::binary | std::ios::ate);
+    if (shader_file.is_open())
+    {
+        // std::ios::ate will automatically seek to the end of the file on opening it,
+        // so tellg will report the size of the file
+        shader_size = shader_file.tellg();
+        shader_src_file = new char[shader_size];
+
+        shader_file.seekg(0, std::ios::beg);
+        shader_file.read(shader_src_file, shader_size);
+        shader_file.close();
+    }
+
+    if (shader_src_file == nullptr)
+    {
+        SDL_assert(false);
+        return false;
+    }
+
+    shaderc_compilation_result_t compilation_result = shaderc_compile_into_spv(
+        vulkan_renderer->shaderc_compiler,
+        shader_src_file,
+        shader_size,
+        shader_kind,
+        path,
+        entry_point,
+        compile_options);
+
+    delete[] shader_src_file;
+
+    shaderc_compilation_status compilation_status = shaderc_result_get_compilation_status(compilation_result);
+    if (compilation_status != shaderc_compilation_status_success)
+    {
+        const char* error_message = shaderc_result_get_error_message(compilation_result);
+        SDL_LogCritical(SDL_LOG_CATEGORY_APPLICATION, "Shader Compilation Error %s\n%s", path, error_message);
+    }
+
+    if (compilation_status != shaderc_compilation_status_success)
+    {
+        shaderc_result_release(compilation_result);
+        return false;
+    }
+
+    const uint32_t* shader_data = reinterpret_cast<const uint32_t*>(shaderc_result_get_bytes(compilation_result));
+    size_t shader_data_size = shaderc_result_get_length(compilation_result);
+
+    constexpr uint32_t SPIRV_MAGIC = 0x07230203;
+    if (SPIRV_MAGIC != shader_data[0])
+    {
+        shaderc_result_release(compilation_result);
+        SDL_LogCritical(SDL_LOG_CATEGORY_APPLICATION, "Shader Compilation Error %s\nshader data didn't match magic value", path);
+        return false;
+    }
+
+    VkShaderModuleCreateInfo shader_module_create_info;
+    shader_module_create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    shader_module_create_info.pNext = nullptr;
+    shader_module_create_info.flags = 0;
+    shader_module_create_info.codeSize = shader_data_size;
+    shader_module_create_info.pCode = shader_data;
+
+    VkResult result = vkCreateShaderModule(vulkan_renderer->device, &shader_module_create_info, s_allocator, out_shader_module);
+    VK_ASSERT(result);
+
+    shaderc_result_release(compilation_result);
+
+    return result == VK_SUCCESS;
 }

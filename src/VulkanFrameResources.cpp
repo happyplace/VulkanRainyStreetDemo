@@ -35,6 +35,8 @@ VulkanFrameResources* vulkan_frame_resources_init(struct VulkanRenderer* vulkan_
     {
         FrameResource* frame_resource = &vulkan_frame_resources->frame_resources[i];
 
+        frame_resource->index = static_cast<uint8_t>(i);
+
         VkSemaphoreCreateInfo semaphore_create_info;
         semaphore_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
         semaphore_create_info.pNext = nullptr;

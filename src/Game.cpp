@@ -3,6 +3,7 @@
 #include "GameTimer.h"
 #include "SDL_assert.h"
 
+#include "VulkanSharedResources.h"
 #include "imgui.h"
 
 #include "GameWindow.h"
@@ -34,6 +35,11 @@ void game_destroy(Game* game)
     }
 #endif // IMGUI_ENABLED
 
+    if (game->shared_resources)
+    {
+        vulkan_shared_resources_destroy(game->shared_resources, game->vulkan_renderer);
+    }
+
     if (game->frame_resources)
     {
         vulkan_frame_resources_destroy(game->frame_resources, game->vulkan_renderer);
@@ -47,11 +53,6 @@ void game_destroy(Game* game)
     if (game->game_window)
     {
        game_window_destory(game->game_window);
-    }
-
-    if (game->game_map)
-    {
-        game_map_destroy(game->game_map);
     }
 
     delete game;
@@ -82,8 +83,8 @@ Game* game_init()
         return nullptr;
     }
 
-    game->game_map = game_map_init();
-    if (game->game_map == nullptr)
+    game->shared_resources = vulkan_shared_resources_init(game->vulkan_renderer);
+    if (game->shared_resources == nullptr)
     {
         game_destroy(game);
         return nullptr;
@@ -138,7 +139,13 @@ int game_run(int argc, char** argv)
         return 1;
     }
 
-    game_map_load(game->game_map);
+    GameMap* game_map = game_map_init();
+    if (game_map == nullptr)
+    {
+        return 1;
+    }
+
+    game_map_load(game_map);
 
     game_timer_reset(game->game_timer);
 
@@ -160,8 +167,8 @@ int game_run(int argc, char** argv)
         frame_resource->time.total_time = game_timer_total_time(game->game_timer);
         frame_resource->time.frame_number = game_timer_frame_count(game->game_timer);
 
-        game_map_update(game, frame_resource);
-        game_map_render(game, frame_resource);
+        game_map_update(game_map, frame_resource, game);
+        game_map_render(game_map, frame_resource, game);
 
         game_frame_render_end_frame(frame_resource, game);
 
@@ -172,6 +179,7 @@ int game_run(int argc, char** argv)
         game_frame_render_submit(frame_resource, game);
     }
 
+    game_map_destroy(game_map);
     game_destroy(game);
     return 0;
 }

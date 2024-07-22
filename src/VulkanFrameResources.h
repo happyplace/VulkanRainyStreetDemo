@@ -16,6 +16,7 @@ struct FrameResourceTime
 
 struct FrameResource
 {
+    uint8_t index = 0;
     VkSemaphore acquire_image = VK_NULL_HANDLE;
     VkSemaphore release_image = VK_NULL_HANDLE;
     VkFence submit_fence = VK_NULL_HANDLE;

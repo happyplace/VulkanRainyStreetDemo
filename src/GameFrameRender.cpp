@@ -63,7 +63,7 @@ FrameResource* game_frame_render_begin_frame(Game* game)
 
     clear_values[0].color = {{ 0.392156869f, 0.58431375f, 0.929411769f, 1.0f }};
 
-    clear_values[1].depthStencil.depth = 0.0f;
+    clear_values[1].depthStencil.depth = 1.0f;
     clear_values[1].depthStencil.stencil = 0;
 
     VkRenderPassBeginInfo render_pass_begin_info;
