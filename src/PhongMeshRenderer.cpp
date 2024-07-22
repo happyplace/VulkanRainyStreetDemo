@@ -18,7 +18,7 @@
 #include "VulkanFrameResources.h"
 #include "RenderDefines.h"
 
-struct MeshRenderer
+struct PhongMeshRenderer
 {
     VkBuffer object_buffer = VK_NULL_HANDLE;
     VmaAllocation object_allocation = VK_NULL_HANDLE;
@@ -37,7 +37,7 @@ constexpr uint32_t c_mesh_renderer_max_mesh_object = 500;
 const char* mesh_renderer_vertex_entry = "vs";
 const char* mesh_renderer_fragment_entry = "fs";
 
-void mesh_renderer_destroy_object_buffer(MeshRenderer* mesh_renderer, Game* game)
+void phong_mesh_renderer_destroy_object_buffer(PhongMeshRenderer* mesh_renderer, Game* game)
 {
     if (mesh_renderer->object_allocation != VK_NULL_HANDLE || mesh_renderer->object_buffer != VK_NULL_HANDLE)
     {
@@ -48,7 +48,7 @@ void mesh_renderer_destroy_object_buffer(MeshRenderer* mesh_renderer, Game* game
     }
 }
 
-void mesh_renderer_destroy_descriptor_set(MeshRenderer* mesh_renderer, Game* game)
+void phong_mesh_renderer_destroy_descriptor_set(PhongMeshRenderer* mesh_renderer, Game* game)
 {
     if (mesh_renderer->descriptor_sets)
     {
@@ -79,7 +79,7 @@ void mesh_renderer_destroy_descriptor_set(MeshRenderer* mesh_renderer, Game* gam
     }
 }
 
-void mesh_renderer_destroy_compile_vertex_shader(MeshRenderer* mesh_renderer, Game* game)
+void phong_mesh_renderer_destroy_compile_vertex_shader(PhongMeshRenderer* mesh_renderer, Game* game)
 {
     if (mesh_renderer->vertex != VK_NULL_HANDLE)
     {
@@ -87,7 +87,7 @@ void mesh_renderer_destroy_compile_vertex_shader(MeshRenderer* mesh_renderer, Ga
     }
 }
 
-void mesh_renderer_destroy_compile_fragment_shader(MeshRenderer* mesh_renderer, Game* game)
+void phong_mesh_renderer_destroy_compile_fragment_shader(PhongMeshRenderer* mesh_renderer, Game* game)
 {
     if (mesh_renderer->fragment != VK_NULL_HANDLE)
     {
@@ -95,7 +95,7 @@ void mesh_renderer_destroy_compile_fragment_shader(MeshRenderer* mesh_renderer, 
     }
 }
 
-void mesh_renderer_destroy_pipeline_layout(MeshRenderer* mesh_renderer, Game* game)
+void phong_mesh_renderer_destroy_pipeline_layout(PhongMeshRenderer* mesh_renderer, Game* game)
 {
     if (mesh_renderer->pipeline_layout != VK_NULL_HANDLE)
     {
@@ -103,7 +103,7 @@ void mesh_renderer_destroy_pipeline_layout(MeshRenderer* mesh_renderer, Game* ga
     }
 }
 
-void mesh_renderer_destroy_pipeline(MeshRenderer* mesh_renderer, Game* game)
+void phong_mesh_renderer_destroy_pipeline(PhongMeshRenderer* mesh_renderer, Game* game)
 {
     if (mesh_renderer->pipeline != VK_NULL_HANDLE)
     {
@@ -111,23 +111,23 @@ void mesh_renderer_destroy_pipeline(MeshRenderer* mesh_renderer, Game* game)
     }
 }
 
-void mesh_renderer_destroy(MeshRenderer* mesh_renderer, struct Game* game)
+void phong_mesh_renderer_destroy(PhongMeshRenderer* mesh_renderer, struct Game* game)
 {
     SDL_assert(mesh_renderer);
 
     vulkan_renderer_wait_device_idle(game->vulkan_renderer);
 
-    mesh_renderer_destroy_pipeline(mesh_renderer, game);
-    mesh_renderer_destroy_pipeline_layout(mesh_renderer, game);
-    mesh_renderer_destroy_compile_fragment_shader(mesh_renderer, game);
-    mesh_renderer_destroy_compile_vertex_shader(mesh_renderer, game);
-    mesh_renderer_destroy_descriptor_set(mesh_renderer, game);
-    mesh_renderer_destroy_object_buffer(mesh_renderer, game);
+    phong_mesh_renderer_destroy_pipeline(mesh_renderer, game);
+    phong_mesh_renderer_destroy_pipeline_layout(mesh_renderer, game);
+    phong_mesh_renderer_destroy_compile_fragment_shader(mesh_renderer, game);
+    phong_mesh_renderer_destroy_compile_vertex_shader(mesh_renderer, game);
+    phong_mesh_renderer_destroy_descriptor_set(mesh_renderer, game);
+    phong_mesh_renderer_destroy_object_buffer(mesh_renderer, game);
 
     delete mesh_renderer;
 }
 
-bool mesh_renderer_init_object_buffer(MeshRenderer* mesh_renderer, Game* game)
+bool phong_mesh_renderer_init_object_buffer(PhongMeshRenderer* mesh_renderer, Game* game)
 {
     mesh_renderer->object_alignment_size = vulkan_renderer_calculate_uniform_buffer_size(game->vulkan_renderer, sizeof(Vulkan_MeshRendererObjectBuffer));
 
@@ -157,7 +157,7 @@ bool mesh_renderer_init_object_buffer(MeshRenderer* mesh_renderer, Game* game)
     return result == VK_SUCCESS;
 }
 
-bool mesh_renderer_init_descriptor_set(MeshRenderer* mesh_renderer, Game* game)
+bool phong_mesh_renderer_init_descriptor_set(PhongMeshRenderer* mesh_renderer, Game* game)
 {
     constexpr uint32_t max_render_object_count = 1;
 
@@ -324,7 +324,7 @@ bool mesh_renderer_init_descriptor_set(MeshRenderer* mesh_renderer, Game* game)
     return true;
 }
 
-bool mesh_renderer_init_compile_vertex_shader(MeshRenderer* mesh_renderer, Game* game)
+bool phong_mesh_renderer_init_compile_vertex_shader(PhongMeshRenderer* mesh_renderer, Game* game)
 {
     shaderc_compile_options_t compile_options = shaderc_compile_options_initialize();
     if (compile_options == nullptr)
@@ -348,7 +348,7 @@ bool mesh_renderer_init_compile_vertex_shader(MeshRenderer* mesh_renderer, Game*
     return result;
 }
 
-bool mesh_renderer_init_compile_fragment_shader(MeshRenderer* mesh_renderer, Game* game)
+bool phong_mesh_renderer_init_compile_fragment_shader(PhongMeshRenderer* mesh_renderer, Game* game)
 {
     shaderc_compile_options_t compile_options = shaderc_compile_options_initialize();
     if (compile_options == nullptr)
@@ -372,7 +372,7 @@ bool mesh_renderer_init_compile_fragment_shader(MeshRenderer* mesh_renderer, Gam
     return result;
 }
 
-bool mesh_renderer_init_pipeline_layout(MeshRenderer* mesh_renderer, Game* game)
+bool phong_mesh_renderer_init_pipeline_layout(PhongMeshRenderer* mesh_renderer, Game* game)
 {
     VkPipelineLayoutCreateInfo pipeline_layout_create_info;
     pipeline_layout_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -387,7 +387,7 @@ bool mesh_renderer_init_pipeline_layout(MeshRenderer* mesh_renderer, Game* game)
     return result == VK_SUCCESS;
 }
 
-bool mesh_renderer_init_pipeline(MeshRenderer* mesh_renderer, Game* game)
+bool phong_mesh_renderer_init_pipeline(PhongMeshRenderer* mesh_renderer, Game* game)
 {
     std::array<VkPipelineShaderStageCreateInfo, 2> pipeline_shader_stage_create_infos;
     pipeline_shader_stage_create_infos[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -600,55 +600,55 @@ bool mesh_renderer_init_pipeline(MeshRenderer* mesh_renderer, Game* game)
     return result == VK_SUCCESS;
 }
 
-MeshRenderer* mesh_renderer_init(struct Game* game)
+PhongMeshRenderer* phong_mesh_renderer_init(struct Game* game)
 {
-    MeshRenderer* mesh_renderer = new MeshRenderer();
+    PhongMeshRenderer* mesh_renderer = new PhongMeshRenderer();
 
-    if (!mesh_renderer_init_object_buffer(mesh_renderer, game))
+    if (!phong_mesh_renderer_init_object_buffer(mesh_renderer, game))
     {
-        mesh_renderer_destroy(mesh_renderer, game);
+        phong_mesh_renderer_destroy(mesh_renderer, game);
         return nullptr;
     }
 
-    if (!mesh_renderer_init_descriptor_set(mesh_renderer, game))
+    if (!phong_mesh_renderer_init_descriptor_set(mesh_renderer, game))
     {
-        mesh_renderer_destroy(mesh_renderer, game);
+        phong_mesh_renderer_destroy(mesh_renderer, game);
         return nullptr;
     }
 
-    if (!mesh_renderer_init_compile_vertex_shader(mesh_renderer, game))
+    if (!phong_mesh_renderer_init_compile_vertex_shader(mesh_renderer, game))
     {
-        mesh_renderer_destroy(mesh_renderer, game);
+        phong_mesh_renderer_destroy(mesh_renderer, game);
         return nullptr;
     }
 
-    if (!mesh_renderer_init_compile_fragment_shader(mesh_renderer, game))
+    if (!phong_mesh_renderer_init_compile_fragment_shader(mesh_renderer, game))
     {
-        mesh_renderer_destroy(mesh_renderer, game);
+        phong_mesh_renderer_destroy(mesh_renderer, game);
         return nullptr;
     }
 
-    if (!mesh_renderer_init_pipeline_layout(mesh_renderer, game))
+    if (!phong_mesh_renderer_init_pipeline_layout(mesh_renderer, game))
     {
-        mesh_renderer_destroy(mesh_renderer, game);
+        phong_mesh_renderer_destroy(mesh_renderer, game);
         return nullptr;
     }
 
-    if (!mesh_renderer_init_pipeline(mesh_renderer, game))
+    if (!phong_mesh_renderer_init_pipeline(mesh_renderer, game))
     {
-        mesh_renderer_destroy(mesh_renderer, game);
+        phong_mesh_renderer_destroy(mesh_renderer, game);
         return nullptr;
     }
 
     return mesh_renderer;
 }
 
-uint32_t mesh_renderer_get_object_buffer_offset(MeshRenderer* mesh_renderer, struct FrameResource* frame_resource, uint32_t object_index)
+uint32_t phong_mesh_renderer_get_object_buffer_offset(PhongMeshRenderer* mesh_renderer, struct FrameResource* frame_resource, uint32_t object_index)
 {
     return static_cast<uint32_t>((c_mesh_renderer_max_mesh_object * mesh_renderer->object_alignment_size * frame_resource->index) + object_index);
 }
 
-void mesh_renderer_render(MeshRenderer* mesh_renderer, struct FrameResource* frame_resource, struct Game* game)
+void phong_mesh_renderer_render(PhongMeshRenderer* mesh_renderer, struct FrameResource* frame_resource, struct Game* game)
 {
     using namespace DirectX;
 
@@ -716,7 +716,7 @@ void mesh_renderer_render(MeshRenderer* mesh_renderer, struct FrameResource* fra
 
     VulkanMeshType vulkan_mesh_type = VulkanMeshType::Cube;
 
-    uint32_t object_buffer_offset = mesh_renderer_get_object_buffer_offset(mesh_renderer, frame_resource, 0);
+    uint32_t object_buffer_offset = phong_mesh_renderer_get_object_buffer_offset(mesh_renderer, frame_resource, 0);
 
     VK_ASSERT(vmaCopyMemoryToAllocation(
         game->vulkan_renderer->vma_allocator,
