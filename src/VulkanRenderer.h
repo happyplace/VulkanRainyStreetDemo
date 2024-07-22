@@ -55,6 +55,6 @@ void vulkan_renderer_on_window_resized(VulkanRenderer* vulkan_renderer, struct G
 bool vulkan_renderer_different_compute_and_graphics_queue(VulkanRenderer* vulkan_renderer, struct GameWindow* game_window);
 void vulkan_renderer_wait_device_idle(VulkanRenderer* vulkan_renderer);
 VkDeviceSize vulkan_renderer_calculate_uniform_buffer_size(VulkanRenderer* vulkan_renderer, size_t size);
-bool vulkan_renderer_compile_shader(VulkanRenderer* vulkan_renderer, const char* path, shaderc_compile_options_t compile_options, shaderc_shader_kind shader_kind, VkShaderModule* out_shader_module);
+bool vulkan_renderer_compile_shader(VulkanRenderer* vulkan_renderer, const char* path, shaderc_compile_options_t compile_options, shaderc_shader_kind shader_kind,  const char* entry_point, VkShaderModule* out_shader_module);
 
 #endif // VRSD_VulkanRenderer_h_

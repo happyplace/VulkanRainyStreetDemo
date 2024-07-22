@@ -1143,7 +1143,7 @@ VkDeviceSize vulkan_renderer_calculate_uniform_buffer_size(VulkanRenderer* vulka
         static_cast<VkDeviceSize>(ceil(static_cast<float>(size) / vulkan_renderer->min_uniform_buffer_offset_alignment));
 }
 
-bool vulkan_renderer_compile_shader(VulkanRenderer* vulkan_renderer, const char* path, shaderc_compile_options_t compile_options, shaderc_shader_kind shader_kind, VkShaderModule* out_shader_module)
+bool vulkan_renderer_compile_shader(VulkanRenderer* vulkan_renderer, const char* path, shaderc_compile_options_t compile_options, shaderc_shader_kind shader_kind, const char* entry_point, VkShaderModule* out_shader_module)
 {
     char* shader_src_file = nullptr;
     size_t shader_size = 0;
@@ -1173,7 +1173,7 @@ bool vulkan_renderer_compile_shader(VulkanRenderer* vulkan_renderer, const char*
         shader_size,
         shader_kind,
         path,
-        "main",
+        entry_point,
         compile_options);
 
     delete[] shader_src_file;

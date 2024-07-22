@@ -34,6 +34,8 @@ struct MeshRenderer
 
 constexpr uint32_t c_mesh_renderer_desriptor_count = 1;//4;
 constexpr uint32_t c_mesh_renderer_max_mesh_object = 500;
+const char* mesh_renderer_vertex_entry = "vs";
+const char* mesh_renderer_fragment_entry = "fs";
 
 void mesh_renderer_destroy_object_buffer(MeshRenderer* mesh_renderer, Game* game)
 {
@@ -331,11 +333,14 @@ bool mesh_renderer_init_compile_vertex_shader(MeshRenderer* mesh_renderer, Game*
         return false;
     }
 
+    shaderc_compile_options_set_source_language(compile_options, shaderc_source_language_hlsl);
+
     bool result = vulkan_renderer_compile_shader(
         game->vulkan_renderer,
-        "data/MeshShader.vert",
+        "data/MeshShader.hlsl",
         compile_options,
         shaderc_glsl_vertex_shader,
+        mesh_renderer_vertex_entry,
         &mesh_renderer->vertex);
 
     shaderc_compile_options_release(compile_options);
@@ -352,11 +357,14 @@ bool mesh_renderer_init_compile_fragment_shader(MeshRenderer* mesh_renderer, Gam
         return false;
     }
 
+    shaderc_compile_options_set_source_language(compile_options, shaderc_source_language_hlsl);
+
     bool result = vulkan_renderer_compile_shader(
         game->vulkan_renderer,
-        "data/MeshShader.frag",
+        "data/MeshShader.hlsl",
         compile_options,
         shaderc_glsl_fragment_shader,
+        mesh_renderer_fragment_entry,
         &mesh_renderer->fragment);
 
     shaderc_compile_options_release(compile_options);
@@ -387,7 +395,7 @@ bool mesh_renderer_init_pipeline(MeshRenderer* mesh_renderer, Game* game)
     pipeline_shader_stage_create_infos[0].flags = 0;
     pipeline_shader_stage_create_infos[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
     pipeline_shader_stage_create_infos[0].module = mesh_renderer->vertex;
-    pipeline_shader_stage_create_infos[0].pName = "main";
+    pipeline_shader_stage_create_infos[0].pName = mesh_renderer_vertex_entry;
     pipeline_shader_stage_create_infos[0].pSpecializationInfo = nullptr;
 
     pipeline_shader_stage_create_infos[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -395,7 +403,7 @@ bool mesh_renderer_init_pipeline(MeshRenderer* mesh_renderer, Game* game)
     pipeline_shader_stage_create_infos[1].flags = 0;
     pipeline_shader_stage_create_infos[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
     pipeline_shader_stage_create_infos[1].module = mesh_renderer->fragment;
-    pipeline_shader_stage_create_infos[1].pName = "main";
+    pipeline_shader_stage_create_infos[1].pName = mesh_renderer_fragment_entry;
     pipeline_shader_stage_create_infos[1].pSpecializationInfo = nullptr;
 
     std::array<VkVertexInputAttributeDescription, /*3*/1> vertex_input_attribute_descriptions;
