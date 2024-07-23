@@ -129,7 +129,7 @@ void phong_mesh_renderer_destroy(PhongMeshRenderer* mesh_renderer, struct Game* 
 
 bool phong_mesh_renderer_init_object_buffer(PhongMeshRenderer* mesh_renderer, Game* game)
 {
-    mesh_renderer->object_alignment_size = vulkan_renderer_calculate_uniform_buffer_size(game->vulkan_renderer, sizeof(Vulkan_MeshRendererObjectBuffer));
+    mesh_renderer->object_alignment_size = vulkan_renderer_calculate_uniform_buffer_size(game->vulkan_renderer, sizeof(ObjectBuffer));
 
     VkBufferCreateInfo buffer_create_info;
     buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -286,7 +286,7 @@ bool phong_mesh_renderer_init_descriptor_set(PhongMeshRenderer* mesh_renderer, G
     VkDescriptorBufferInfo frame_buffer_descriptor_buffer_info;
     frame_buffer_descriptor_buffer_info.buffer = game->shared_resources->frame_buffer;
     frame_buffer_descriptor_buffer_info.offset = 0;
-    frame_buffer_descriptor_buffer_info.range = sizeof(Vulkan_FrameBuffer);
+    frame_buffer_descriptor_buffer_info.range = sizeof(MeshRenderer_FrameBuffer);
 
     VkWriteDescriptorSet frame_buffer_write_descriptor_set;
     frame_buffer_write_descriptor_set.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -305,7 +305,7 @@ bool phong_mesh_renderer_init_descriptor_set(PhongMeshRenderer* mesh_renderer, G
     VkDescriptorBufferInfo object_buffer_descriptor_buffer_info;
     object_buffer_descriptor_buffer_info.buffer = mesh_renderer->object_buffer;
     object_buffer_descriptor_buffer_info.offset = 0;
-    object_buffer_descriptor_buffer_info.range = sizeof(Vulkan_MeshRendererObjectBuffer);
+    object_buffer_descriptor_buffer_info.range = sizeof(ObjectBuffer);
 
     VkWriteDescriptorSet object_buffer_write_descriptor_set;
     object_buffer_write_descriptor_set.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -678,7 +678,7 @@ void phong_mesh_renderer_render(PhongMeshRenderer* mesh_renderer, struct FrameRe
     vkCmdBindDescriptorSets(frame_resource->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_renderer->pipeline_layout, 3, 1,
         &mesh_renderer->descriptor_sets[3], 0, nullptr);
 
-    Vulkan_FrameBuffer frame_buffer;
+    MeshRenderer_FrameBuffer frame_buffer;
 
     XMVECTOR position = XMVectorSet(0.0f, 0.0f, 2.0f, 1.0f);
     XMVECTOR target = XMVectorZero();
@@ -698,6 +698,8 @@ void phong_mesh_renderer_render(PhongMeshRenderer* mesh_renderer, struct FrameRe
     XMMATRIX view_proj = view * proj;
     view_proj = XMMatrixTranspose(view_proj);
 
+    frame_buffer.ambient_light = XMFLOAT4(0.25f, 0.25f, 0.25f, 1.0f);
+
     XMStoreFloat4x4(&frame_buffer.view_proj, view_proj);
 
     VK_ASSERT(vmaCopyMemoryToAllocation(
@@ -705,9 +707,9 @@ void phong_mesh_renderer_render(PhongMeshRenderer* mesh_renderer, struct FrameRe
         &frame_buffer,
         game->shared_resources->frame_allocation,
         frame_buffer_offset,
-        static_cast<VkDeviceSize>(sizeof(Vulkan_FrameBuffer))));
+        static_cast<VkDeviceSize>(sizeof(MeshRenderer_FrameBuffer))));
 
-    Vulkan_MeshRendererObjectBuffer object_buffer;
+    ObjectBuffer object_buffer;
 
     XMMATRIX world = XMMatrixScaling(1.0f, 1.0f, 1.0f) * XMMatrixRotationRollPitchYaw(XMConvertToRadians(0.0f), XMConvertToRadians(45.0f), XMConvertToRadians(0.0f));
     world = XMMatrixTranspose(world);
@@ -723,7 +725,7 @@ void phong_mesh_renderer_render(PhongMeshRenderer* mesh_renderer, struct FrameRe
         &object_buffer,
         mesh_renderer->object_allocation,
         object_buffer_offset,
-        static_cast<VkDeviceSize>(sizeof(Vulkan_MeshRendererObjectBuffer))));
+        static_cast<VkDeviceSize>(sizeof(ObjectBuffer))));
 
     vkCmdBindDescriptorSets(frame_resource->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_renderer->pipeline_layout, 1, 1,
         &mesh_renderer->descriptor_sets[1], 1, &object_buffer_offset);

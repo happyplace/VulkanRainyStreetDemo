@@ -13,9 +13,23 @@ struct Vertex
     DirectX::XMFLOAT2 texture;
 };
 
-struct VRSD_ALIGN(16) Vulkan_MeshRendererObjectBuffer
+struct VRSD_ALIGN(16) DirectionalLight
+{
+    DirectX::XMFLOAT3 strength;
+    DirectX::XMFLOAT3 direction;
+};
+
+struct VRSD_ALIGN(16) ObjectBuffer
 {
     DirectX::XMFLOAT4X4 world;
+};
+
+struct VRSD_ALIGN(16) MeshRenderer_FrameBuffer
+{
+    DirectX::XMFLOAT4X4 view_proj;
+    DirectX::XMFLOAT3 eye_pos;
+    float padding0;
+    DirectX::XMFLOAT4 ambient_light;
 };
 
 #endif // VRSD_RenderDefines_h_

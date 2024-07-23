@@ -17,6 +17,8 @@ struct FrameBuffer
 {
     float4x4 view_proj;
     float3 eye_pos;
+    float padding0;
+    float4 ambient_light;
 };
 
 cbuffer frame : register(b0, space0) { FrameBuffer frame; }
@@ -47,5 +49,9 @@ VertexOut vs(VertexIn vin)
 
 float4 fs(VertexOut vout) : SV_Target
 {
-    return float4(1.0f, 1.0f, 1.0f, 1.0f);
+    float4 lit_colour = frame.ambient_light;
+
+    lit_colour.a = 1.0f;
+
+    return lit_colour;
 }
