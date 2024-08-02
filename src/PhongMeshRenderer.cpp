@@ -694,6 +694,10 @@ void phong_mesh_renderer_render(PhongMeshRenderer* mesh_renderer, struct FrameRe
         aspect_ratio,
         0.1f,
         10000.0f);
+    XMFLOAT4X4 proj_float;
+    XMStoreFloat4x4(&proj_float, proj);
+    proj_float.m[1][1] *= -1.0f; // flip y coordinate for vulkan
+    proj = XMLoadFloat4x4(&proj_float);
 
     XMMATRIX view_proj = view * proj;
     view_proj = XMMatrixTranspose(view_proj);
