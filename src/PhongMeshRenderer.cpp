@@ -1,10 +1,12 @@
 #include "PhongMeshRenderer.h"
 
 #include <array>
+#include <string>
 
 #include <SDL_assert.h>
 #include <SDL_log.h>
 
+#include <cstring>
 #include <shaderc/shaderc.h>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
@@ -36,6 +38,8 @@ constexpr uint32_t c_mesh_renderer_desriptor_count = 4;
 constexpr uint32_t c_mesh_renderer_max_mesh_object = 500;
 const char* mesh_renderer_vertex_entry = "vs";
 const char* mesh_renderer_fragment_entry = "fs";
+
+constexpr uint32_t c_frame_buffer_directional_light_count = 1;
 
 void phong_mesh_renderer_destroy_object_buffer(PhongMeshRenderer* mesh_renderer, Game* game)
 {
@@ -359,6 +363,12 @@ bool phong_mesh_renderer_init_compile_fragment_shader(PhongMeshRenderer* mesh_re
 
     shaderc_compile_options_set_source_language(compile_options, shaderc_source_language_hlsl);
 
+    const char* num_directional_lights = "NUM_DIRECTIONAL_LIGHTS";
+    std::string num_directional_lights_value = std::to_string(c_frame_buffer_directional_light_count);
+    shaderc_compile_options_add_macro_definition(compile_options,
+        num_directional_lights, strlen(num_directional_lights),
+        num_directional_lights_value.c_str(), static_cast<size_t>(num_directional_lights_value.size()));
+
     bool result = vulkan_renderer_compile_shader(
         game->vulkan_renderer,
         "data/PhongMeshShader.hlsl",
@@ -481,8 +491,8 @@ bool phong_mesh_renderer_init_pipeline(PhongMeshRenderer* mesh_renderer, Game* g
     pipeline_rasterization_state_create_info.depthClampEnable = VK_FALSE;
     pipeline_rasterization_state_create_info.rasterizerDiscardEnable = VK_FALSE;
     pipeline_rasterization_state_create_info.polygonMode = wireframe ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
-    pipeline_rasterization_state_create_info.cullMode = wireframe ? VK_CULL_MODE_NONE : VK_CULL_MODE_BACK_BIT;
-    pipeline_rasterization_state_create_info.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    pipeline_rasterization_state_create_info.cullMode = wireframe ? VK_CULL_MODE_NONE : VK_CULL_MODE_FRONT_BIT;
+    pipeline_rasterization_state_create_info.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     pipeline_rasterization_state_create_info.depthBiasEnable = VK_FALSE;
     pipeline_rasterization_state_create_info.depthBiasConstantFactor = 0.0f;
     pipeline_rasterization_state_create_info.depthBiasClamp = 0.0f;
@@ -680,7 +690,7 @@ void phong_mesh_renderer_render(PhongMeshRenderer* mesh_renderer, struct FrameRe
 
     MeshRenderer_FrameBuffer frame_buffer;
 
-    XMVECTOR position = XMVectorSet(0.0f, 0.0f, 2.0f, 1.0f);
+    XMVECTOR position = XMVectorSet(0.0f, 1.0f, -2.0f, 1.0f);
     XMVECTOR target = XMVectorZero();
     XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 
@@ -688,8 +698,8 @@ void phong_mesh_renderer_render(PhongMeshRenderer* mesh_renderer, struct FrameRe
     float height = static_cast<float>(game->vulkan_renderer->swapchain_height);
     float aspect_ratio = width / height;
 
-    XMMATRIX view = XMMatrixLookAtRH(position, target, up);
-    XMMATRIX proj = XMMatrixPerspectiveFovRH(
+    XMMATRIX view = XMMatrixLookAtLH(position, target, up);
+    XMMATRIX proj = XMMatrixPerspectiveFovLH(
         XMConvertToRadians(80.0f),
         aspect_ratio,
         0.1f,
@@ -704,6 +714,35 @@ void phong_mesh_renderer_render(PhongMeshRenderer* mesh_renderer, struct FrameRe
 
     frame_buffer.ambient_light = XMFLOAT4(0.25f, 0.25f, 0.25f, 1.0f);
 
+    XMStoreFloat3(&frame_buffer.eye_pos, position);
+
+    uint32_t current_light_index = 0;
+
+    std::array<DirectionalLight, c_frame_buffer_directional_light_count> directional_lights;
+    XMStoreFloat4x4(&directional_lights[0].world,
+        XMMatrixRotationRollPitchYaw(
+            XMConvertToRadians(0.0f),
+            XMConvertToRadians(0.0f),
+            XMConvertToRadians(0.0f)));
+	directional_lights[0].strength =  { 0.6f, 0.6f, 0.6f };
+
+    for (DirectionalLight& directional_light : directional_lights)
+    {
+        if (current_light_index >= c_render_defines_max_lights)
+        {
+            SDL_assert(false);
+            break;
+        }
+
+        XMVECTOR forward_light = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
+        XMVECTOR direction = XMVector4Transform(forward_light, XMLoadFloat4x4(&directional_light.world));
+        XMStoreFloat3(&frame_buffer.lights[current_light_index].direction, direction);
+
+        frame_buffer.lights[current_light_index].strength = directional_light.strength;
+
+        current_light_index++;
+    }
+
     XMStoreFloat4x4(&frame_buffer.view_proj, view_proj);
 
     VK_ASSERT(vmaCopyMemoryToAllocation(
@@ -715,10 +754,14 @@ void phong_mesh_renderer_render(PhongMeshRenderer* mesh_renderer, struct FrameRe
 
     ObjectBuffer object_buffer;
 
-    XMMATRIX world = XMMatrixScaling(1.0f, 1.0f, 1.0f) * XMMatrixRotationRollPitchYaw(XMConvertToRadians(0.0f), XMConvertToRadians(45.0f), XMConvertToRadians(0.0f));
+    XMMATRIX world = XMMatrixScaling(1.0f, 1.0f, 1.0f) * XMMatrixRotationRollPitchYaw(XMConvertToRadians(0.0f), XMConvertToRadians(0.0f), XMConvertToRadians(0.0f));
     world = XMMatrixTranspose(world);
 
     XMStoreFloat4x4(&object_buffer.world, world);
+
+    object_buffer.material.diffuse_albedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	object_buffer.material.fresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05);
+	object_buffer.material.shininess = 0.7f;
 
     VulkanMeshType vulkan_mesh_type = VulkanMeshType::Cube;
 
