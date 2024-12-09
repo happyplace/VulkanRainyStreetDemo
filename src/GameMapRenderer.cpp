@@ -28,3 +28,8 @@ void game_map_renderer_render(GameMapRenderer* game_map_renderer, struct FrameRe
 {
     phong_mesh_renderer_render(game->mesh_renderer, frame_resource, game);
 }
+
+void game_map_renderer_imgui_draw()
+{
+    phong_mesh_renderer_imgui_draw();
+}

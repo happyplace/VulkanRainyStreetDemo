@@ -13,8 +13,16 @@ struct Vertex
 
 struct DirectionalLight
 {
-    DirectX::XMFLOAT4X4 world;
+    DirectX::XMFLOAT3 rotation_euler;
     DirectX::XMFLOAT3 strength;
+};
+
+struct PointLight
+{
+    DirectX::XMFLOAT3 position;
+    DirectX::XMFLOAT3 strength;
+    float falloff_start;
+    float falloff_end;
 };
 
 struct Light

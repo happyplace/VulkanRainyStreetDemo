@@ -12,6 +12,7 @@
 #include <vulkan/vulkan_core.h>
 
 #include "DirectXMath.h"
+#include "imgui.h"
 #include "vk_mem_alloc.h"
 
 #include "Game.h"
@@ -40,6 +41,11 @@ const char* mesh_renderer_vertex_entry = "vs";
 const char* mesh_renderer_fragment_entry = "fs";
 
 constexpr uint32_t c_frame_buffer_directional_light_count = 1;
+constexpr uint32_t c_frame_buffer_point_light_count = 2;
+
+static std::array<PointLight, c_frame_buffer_point_light_count> s_phong_mesh_renderer_point_lights;
+static std::array<DirectionalLight, c_frame_buffer_directional_light_count> s_phong_mesh_renderer_directional_lights;
+static DirectX::XMFLOAT3 s_phong_mesh_renderer_ambient_light = { 0.25f, 0.25f, 0.25f };
 
 void phong_mesh_renderer_destroy_object_buffer(PhongMeshRenderer* mesh_renderer, Game* game)
 {
@@ -369,6 +375,12 @@ bool phong_mesh_renderer_init_compile_fragment_shader(PhongMeshRenderer* mesh_re
         num_directional_lights, strlen(num_directional_lights),
         num_directional_lights_value.c_str(), static_cast<size_t>(num_directional_lights_value.size()));
 
+    const char* num_point_lights = "NUM_POINT_LIGHTS";
+    std::string num_point_lights_value = std::to_string(c_frame_buffer_point_light_count);
+    shaderc_compile_options_add_macro_definition(compile_options,
+        num_point_lights, strlen(num_point_lights),
+        num_point_lights_value.c_str(), static_cast<size_t>(num_point_lights_value.size()));
+
     bool result = vulkan_renderer_compile_shader(
         game->vulkan_renderer,
         "data/PhongMeshShader.hlsl",
@@ -492,7 +504,7 @@ bool phong_mesh_renderer_init_pipeline(PhongMeshRenderer* mesh_renderer, Game* g
     pipeline_rasterization_state_create_info.rasterizerDiscardEnable = VK_FALSE;
     pipeline_rasterization_state_create_info.polygonMode = wireframe ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
     pipeline_rasterization_state_create_info.cullMode = wireframe ? VK_CULL_MODE_NONE : VK_CULL_MODE_FRONT_BIT;
-    pipeline_rasterization_state_create_info.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    pipeline_rasterization_state_create_info.frontFace =  VK_FRONT_FACE_COUNTER_CLOCKWISE;
     pipeline_rasterization_state_create_info.depthBiasEnable = VK_FALSE;
     pipeline_rasterization_state_create_info.depthBiasConstantFactor = 0.0f;
     pipeline_rasterization_state_create_info.depthBiasClamp = 0.0f;
@@ -650,12 +662,88 @@ PhongMeshRenderer* phong_mesh_renderer_init(struct Game* game)
         return nullptr;
     }
 
+    if (0 < s_phong_mesh_renderer_directional_lights.size())
+    {
+        s_phong_mesh_renderer_directional_lights[0].rotation_euler = { 90.0f, 50.0f, 0.0f };
+        s_phong_mesh_renderer_directional_lights[0].strength = { 0.964706f, 0.666667f, 0.043137f };
+    }
+
+    if (0 < s_phong_mesh_renderer_point_lights.size())
+    {
+        s_phong_mesh_renderer_point_lights[0].position = DirectX::XMFLOAT3(-4.0f, 0.0f, -3.0f);
+        s_phong_mesh_renderer_point_lights[0].strength = DirectX::XMFLOAT3(1.0f, 0.0f, 0.0f);
+        s_phong_mesh_renderer_point_lights[0].falloff_start = 5.0f;
+        s_phong_mesh_renderer_point_lights[0].falloff_end = 5.0f;
+    }
+    if (1 < s_phong_mesh_renderer_point_lights.size())
+    {
+        s_phong_mesh_renderer_point_lights[1].position = DirectX::XMFLOAT3(4.0f, 0.0f, -3.0f);
+        s_phong_mesh_renderer_point_lights[1].strength = DirectX::XMFLOAT3(0.0f, 0.0f, 1.0f);
+        s_phong_mesh_renderer_point_lights[1].falloff_start = 5.0f;
+        s_phong_mesh_renderer_point_lights[1].falloff_end = 5.0f;
+    }
+
     return mesh_renderer;
 }
 
 uint32_t phong_mesh_renderer_get_object_buffer_offset(PhongMeshRenderer* mesh_renderer, struct FrameResource* frame_resource, uint32_t object_index)
 {
     return static_cast<uint32_t>((c_mesh_renderer_max_mesh_object * mesh_renderer->object_alignment_size * frame_resource->index) + object_index);
+}
+
+void phong_mesh_renderer_imgui_draw()
+{
+    if (ImGui::Begin("Phong Renderer", nullptr, ImGuiWindowFlags_None))
+    { 
+        ImGui::InputFloat3("Ambient Light", &s_phong_mesh_renderer_ambient_light.x, "%.3f", ImGuiWindowFlags_None);
+
+        ImGui::LabelText("", "Directional Lights");
+        ImGui::PushID("Directional Lights");
+        for (uint32_t i = 0; i < c_frame_buffer_directional_light_count; ++i)
+        {
+            ImGui::PushID(i);
+            float color_array[3] =
+            {                
+                s_phong_mesh_renderer_directional_lights[i].strength.x,
+                s_phong_mesh_renderer_directional_lights[i].strength.y,
+                s_phong_mesh_renderer_directional_lights[i].strength.z
+            };
+            if (ImGui::ColorEdit3("strength", color_array, ImGuiColorEditFlags_None))
+            {
+                s_phong_mesh_renderer_directional_lights[i].strength.x = color_array[0]; 
+                s_phong_mesh_renderer_directional_lights[i].strength.y = color_array[1]; 
+                s_phong_mesh_renderer_directional_lights[i].strength.z = color_array[2];
+            }
+            float rotation_array[3] = 
+            { 
+                s_phong_mesh_renderer_directional_lights[i].rotation_euler.x,
+                s_phong_mesh_renderer_directional_lights[i].rotation_euler.y,
+                s_phong_mesh_renderer_directional_lights[i].rotation_euler.z
+            };
+            if (ImGui::InputFloat3("rotation", rotation_array, "%.3f", ImGuiWindowFlags_None))
+            {
+                s_phong_mesh_renderer_directional_lights[i].rotation_euler.x = rotation_array[0]; 
+                s_phong_mesh_renderer_directional_lights[i].rotation_euler.y = rotation_array[1]; 
+                s_phong_mesh_renderer_directional_lights[i].rotation_euler.z = rotation_array[2];
+            }
+            ImGui::PopID();
+        }
+        ImGui::PopID();
+
+        ImGui::LabelText("", "Point Lights");
+        ImGui::PushID("Point Lights");
+        for (uint32_t i = 0; i < c_frame_buffer_point_light_count; ++i)
+        {
+            ImGui::PushID(i);
+            ImGui::ColorEdit3("strength", &s_phong_mesh_renderer_point_lights[i].strength.x, ImGuiColorEditFlags_None);
+            ImGui::InputFloat3("Position", &s_phong_mesh_renderer_point_lights[i].position.x, "%.3f", ImGuiWindowFlags_None);
+            ImGui::InputFloat("Falloff Start", &s_phong_mesh_renderer_point_lights[i].falloff_start, 0.0f, 0.0f, "%.3f", ImGuiInputTextFlags_None);
+            ImGui::InputFloat("Falloff End", &s_phong_mesh_renderer_point_lights[i].falloff_end, 0.0f, 0.0f, "%.3f", ImGuiInputTextFlags_None);
+            ImGui::PopID();
+        }
+        ImGui::PopID();
+    }
+    ImGui::End();
 }
 
 void phong_mesh_renderer_render(PhongMeshRenderer* mesh_renderer, struct FrameResource* frame_resource, struct Game* game)
@@ -712,21 +800,16 @@ void phong_mesh_renderer_render(PhongMeshRenderer* mesh_renderer, struct FrameRe
     XMMATRIX view_proj = view * proj;
     view_proj = XMMatrixTranspose(view_proj);
 
-    frame_buffer.ambient_light = XMFLOAT4(0.25f, 0.25f, 0.25f, 1.0f);
+    frame_buffer.ambient_light = XMFLOAT4(
+        s_phong_mesh_renderer_ambient_light.x, 
+        s_phong_mesh_renderer_ambient_light.y, 
+        s_phong_mesh_renderer_ambient_light.z, 1.0f);
 
     XMStoreFloat3(&frame_buffer.eye_pos, position);
 
     uint32_t current_light_index = 0;
 
-    std::array<DirectionalLight, c_frame_buffer_directional_light_count> directional_lights;
-    XMStoreFloat4x4(&directional_lights[0].world,
-        XMMatrixRotationRollPitchYaw(
-            XMConvertToRadians(0.0f),
-            XMConvertToRadians(0.0f),
-            XMConvertToRadians(0.0f)));
-	directional_lights[0].strength =  { 0.6f, 0.6f, 0.6f };
-
-    for (DirectionalLight& directional_light : directional_lights)
+    for (DirectionalLight& directional_light : s_phong_mesh_renderer_directional_lights)
     {
         if (current_light_index >= c_render_defines_max_lights)
         {
@@ -734,11 +817,32 @@ void phong_mesh_renderer_render(PhongMeshRenderer* mesh_renderer, struct FrameRe
             break;
         }
 
+        DirectX::XMMATRIX rotation_matrix = DirectX::XMMatrixRotationRollPitchYaw(
+            DirectX::XMConvertToRadians(directional_light.rotation_euler.x), 
+            DirectX::XMConvertToRadians(directional_light.rotation_euler.y), 
+            DirectX::XMConvertToRadians(directional_light.rotation_euler.z));
+
         XMVECTOR forward_light = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
-        XMVECTOR direction = XMVector4Transform(forward_light, XMLoadFloat4x4(&directional_light.world));
+        XMVECTOR direction = XMVector4Transform(forward_light, rotation_matrix);
         XMStoreFloat3(&frame_buffer.lights[current_light_index].direction, direction);
 
         frame_buffer.lights[current_light_index].strength = directional_light.strength;
+
+        current_light_index++;
+    }
+
+    for (PointLight& point_light : s_phong_mesh_renderer_point_lights)
+    {
+        if (current_light_index >= c_render_defines_max_lights)
+        {
+            SDL_assert(false);
+            break;
+        }
+
+        frame_buffer.lights[current_light_index].position = point_light.position;
+        frame_buffer.lights[current_light_index].falloff_start = point_light.falloff_start;
+        frame_buffer.lights[current_light_index].falloff_end = point_light.falloff_end;
+        frame_buffer.lights[current_light_index].strength = point_light.strength;
 
         current_light_index++;
     }

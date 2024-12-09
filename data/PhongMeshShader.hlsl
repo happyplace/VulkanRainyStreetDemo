@@ -104,6 +104,35 @@ float3 blinn_phong(float3 light_strength, float3 light_vec, float3 normal, float
 }
 
 //---------------------------------------------------------------------------------------
+// Evaluates the lighting equation for point lights.
+//---------------------------------------------------------------------------------------
+float3 compute_point_light(Light L, Material mat, float3 pos, float3 normal, float3 to_eye)
+{
+    // The vector from the surface to the light.
+    float3 light_vec = L.position - pos;
+
+    // The distance from surface to light.
+    float d = length(light_vec);
+
+    // Range test.
+    if(d > L.falloff_end)
+        return 0.0f;
+
+    // Normalize the light vector.
+    light_vec /= d;
+
+    // Scale light down by Lambert's cosine law.
+    float ndotl = max(dot(light_vec, normal), 0.0f);
+    float3 light_strength = L.strength * ndotl;
+
+    // Attenuate light by distance.
+    float att = calc_attenuation(d, L.falloff_start, L.falloff_end);
+    light_strength *= att;
+
+    return blinn_phong(light_strength, light_vec, normal, to_eye, mat);
+}
+
+//---------------------------------------------------------------------------------------
 // Evaluates the lighting equation for directional lights.
 //---------------------------------------------------------------------------------------
 float3 compute_directional_light(Light L, Material mat, float3 normal, float3 to_eye)
@@ -130,6 +159,13 @@ float4 compute_lighting(Material mat,
     for(i = 0; i < NUM_DIRECTIONAL_LIGHTS; ++i)
     {
         result += shadow_factor[i] * compute_directional_light(frame.lights[i], mat, normal, to_eye);
+    }
+#endif
+
+#if (NUM_POINT_LIGHTS > 0)
+    for (i = NUM_DIRECTIONAL_LIGHTS; i < NUM_POINT_LIGHTS + NUM_DIRECTIONAL_LIGHTS; ++i)
+    {
+        result += compute_point_light(frame.lights[i], mat, pos, normal, to_eye);
     }
 #endif
 

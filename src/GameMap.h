@@ -15,5 +15,6 @@ void game_map_load(GameMap* game_map);
 
 void game_map_update(GameMap* game_map, struct FrameResource* frame_resource, struct Game* game);
 void game_map_render(GameMap* game_map, struct FrameResource* frame_resource, struct Game* game);
+void game_map_imgui_draw();
 
 #endif // VRSD_GameMap_h_
