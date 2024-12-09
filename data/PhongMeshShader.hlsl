@@ -122,7 +122,7 @@ float4 compute_lighting(Material mat,
                        float3 pos, float3 normal, float3 to_eye,
                        float3 shadow_factor)
 {
-    float3 result = 0.0f;
+    float3 result = float3(0.0f, 0.0f, 0.0f);
 
     int i = 0;
 
