@@ -702,30 +702,8 @@ void phong_mesh_renderer_imgui_draw()
         for (uint32_t i = 0; i < c_frame_buffer_directional_light_count; ++i)
         {
             ImGui::PushID(i);
-            float color_array[3] =
-            {                
-                s_phong_mesh_renderer_directional_lights[i].strength.x,
-                s_phong_mesh_renderer_directional_lights[i].strength.y,
-                s_phong_mesh_renderer_directional_lights[i].strength.z
-            };
-            if (ImGui::ColorEdit3("strength", color_array, ImGuiColorEditFlags_None))
-            {
-                s_phong_mesh_renderer_directional_lights[i].strength.x = color_array[0]; 
-                s_phong_mesh_renderer_directional_lights[i].strength.y = color_array[1]; 
-                s_phong_mesh_renderer_directional_lights[i].strength.z = color_array[2];
-            }
-            float rotation_array[3] = 
-            { 
-                s_phong_mesh_renderer_directional_lights[i].rotation_euler.x,
-                s_phong_mesh_renderer_directional_lights[i].rotation_euler.y,
-                s_phong_mesh_renderer_directional_lights[i].rotation_euler.z
-            };
-            if (ImGui::InputFloat3("rotation", rotation_array, "%.3f", ImGuiWindowFlags_None))
-            {
-                s_phong_mesh_renderer_directional_lights[i].rotation_euler.x = rotation_array[0]; 
-                s_phong_mesh_renderer_directional_lights[i].rotation_euler.y = rotation_array[1]; 
-                s_phong_mesh_renderer_directional_lights[i].rotation_euler.z = rotation_array[2];
-            }
+            ImGui::ColorEdit3("strength", &s_phong_mesh_renderer_directional_lights[i].strength.x, ImGuiColorEditFlags_None);
+            ImGui::InputFloat3("rotation", &s_phong_mesh_renderer_directional_lights[i].rotation_euler.x, "%.3f", ImGuiWindowFlags_None);
             ImGui::PopID();
         }
         ImGui::PopID();
