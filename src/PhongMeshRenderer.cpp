@@ -42,9 +42,11 @@ const char* mesh_renderer_fragment_entry = "fs";
 
 constexpr uint32_t c_frame_buffer_directional_light_count = 1;
 constexpr uint32_t c_frame_buffer_point_light_count = 2;
+constexpr uint32_t c_frame_buffer_spot_light_count = 1;
 
 static std::array<PointLight, c_frame_buffer_point_light_count> s_phong_mesh_renderer_point_lights;
 static std::array<DirectionalLight, c_frame_buffer_directional_light_count> s_phong_mesh_renderer_directional_lights;
+static std::array<SpotLight, c_frame_buffer_spot_light_count> s_phong_mesh_renderer_spot_lights;
 static DirectX::XMFLOAT3 s_phong_mesh_renderer_ambient_light = { 0.25f, 0.25f, 0.25f };
 
 void phong_mesh_renderer_destroy_object_buffer(PhongMeshRenderer* mesh_renderer, Game* game)
@@ -381,6 +383,12 @@ bool phong_mesh_renderer_init_compile_fragment_shader(PhongMeshRenderer* mesh_re
         num_point_lights, strlen(num_point_lights),
         num_point_lights_value.c_str(), static_cast<size_t>(num_point_lights_value.size()));
 
+    const char* num_spot_lights = "NUM_SPOT_LIGHTS";
+    std::string num_spot_lights_value = std::to_string(c_frame_buffer_spot_light_count);
+    shaderc_compile_options_add_macro_definition(compile_options,
+        num_spot_lights, strlen(num_spot_lights),
+        num_spot_lights_value.c_str(), static_cast<size_t>(num_spot_lights_value.size()));
+
     bool result = vulkan_renderer_compile_shader(
         game->vulkan_renderer,
         "data/PhongMeshShader.hlsl",
@@ -665,7 +673,7 @@ PhongMeshRenderer* phong_mesh_renderer_init(struct Game* game)
     if (0 < s_phong_mesh_renderer_directional_lights.size())
     {
         s_phong_mesh_renderer_directional_lights[0].rotation_euler = { 90.0f, 50.0f, 0.0f };
-        s_phong_mesh_renderer_directional_lights[0].strength = { 0.964706f, 0.666667f, 0.043137f };
+        s_phong_mesh_renderer_directional_lights[0].strength = { 0.501961f, 0.380392f, 0.133333f };
     }
 
     if (0 < s_phong_mesh_renderer_point_lights.size())
@@ -681,6 +689,16 @@ PhongMeshRenderer* phong_mesh_renderer_init(struct Game* game)
         s_phong_mesh_renderer_point_lights[1].strength = DirectX::XMFLOAT3(0.0f, 0.0f, 1.0f);
         s_phong_mesh_renderer_point_lights[1].falloff_start = 5.0f;
         s_phong_mesh_renderer_point_lights[1].falloff_end = 5.0f;
+    }
+
+    if (0 < s_phong_mesh_renderer_spot_lights.size())
+    {
+        s_phong_mesh_renderer_spot_lights[0].rotation_euler = DirectX::XMFLOAT3(90.0f, 0.0f, 0.0f);
+        s_phong_mesh_renderer_spot_lights[0].strength = DirectX::XMFLOAT3(0.023529f, 0.454902f, 0.086275f);
+        s_phong_mesh_renderer_spot_lights[0].position = DirectX::XMFLOAT3(0.0f, 2.0f, 0.0f);
+        s_phong_mesh_renderer_spot_lights[0].falloff_start = 25.f;
+        s_phong_mesh_renderer_spot_lights[0].falloff_end = 30.f;
+        s_phong_mesh_renderer_spot_lights[0].spot_power = 34.f;
     }
 
     return mesh_renderer;
@@ -717,6 +735,21 @@ void phong_mesh_renderer_imgui_draw()
             ImGui::InputFloat3("Position", &s_phong_mesh_renderer_point_lights[i].position.x, "%.3f", ImGuiWindowFlags_None);
             ImGui::InputFloat("Falloff Start", &s_phong_mesh_renderer_point_lights[i].falloff_start, 0.0f, 0.0f, "%.3f", ImGuiInputTextFlags_None);
             ImGui::InputFloat("Falloff End", &s_phong_mesh_renderer_point_lights[i].falloff_end, 0.0f, 0.0f, "%.3f", ImGuiInputTextFlags_None);
+            ImGui::PopID();
+        }
+        ImGui::PopID();
+
+        ImGui::LabelText("", "Spot Lights");
+        ImGui::PushID("Spot Lights");
+        for (uint32_t i = 0; i < c_frame_buffer_spot_light_count; ++i)
+        {
+            ImGui::PushID(i);
+            ImGui::ColorEdit3("strength", &s_phong_mesh_renderer_spot_lights[i].strength.x, ImGuiColorEditFlags_None);
+            ImGui::InputFloat3("Position", &s_phong_mesh_renderer_spot_lights[i].position.x, "%.3f", ImGuiWindowFlags_None);
+            ImGui::InputFloat3("rotation", &s_phong_mesh_renderer_spot_lights[i].rotation_euler.x, "%.3f", ImGuiWindowFlags_None);
+            ImGui::InputFloat("Falloff Start", &s_phong_mesh_renderer_spot_lights[i].falloff_start, 0.0f, 0.0f, "%.3f", ImGuiInputTextFlags_None);
+            ImGui::InputFloat("Falloff End", &s_phong_mesh_renderer_spot_lights[i].falloff_end, 0.0f, 0.0f, "%.3f", ImGuiInputTextFlags_None);
+            ImGui::InputFloat("Spot Power", &s_phong_mesh_renderer_spot_lights[i].spot_power, 0.0f, 0.0f, "%.3f", ImGuiInputTextFlags_None);
             ImGui::PopID();
         }
         ImGui::PopID();
@@ -821,6 +854,32 @@ void phong_mesh_renderer_render(PhongMeshRenderer* mesh_renderer, struct FrameRe
         frame_buffer.lights[current_light_index].falloff_start = point_light.falloff_start;
         frame_buffer.lights[current_light_index].falloff_end = point_light.falloff_end;
         frame_buffer.lights[current_light_index].strength = point_light.strength;
+
+        current_light_index++;
+    }
+
+    for (SpotLight& spot_light : s_phong_mesh_renderer_spot_lights)
+    {
+        if (current_light_index >= c_render_defines_max_lights)
+        {
+            SDL_assert(false);
+            break;
+        }
+
+        DirectX::XMMATRIX rotation_matrix = DirectX::XMMatrixRotationRollPitchYaw(
+            DirectX::XMConvertToRadians(spot_light.rotation_euler.x), 
+            DirectX::XMConvertToRadians(spot_light.rotation_euler.y), 
+            DirectX::XMConvertToRadians(spot_light.rotation_euler.z));
+
+        XMVECTOR forward_light = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
+        XMVECTOR direction = XMVector4Transform(forward_light, rotation_matrix);
+        XMStoreFloat3(&frame_buffer.lights[current_light_index].direction, direction);
+
+        frame_buffer.lights[current_light_index].strength = spot_light.strength;
+        frame_buffer.lights[current_light_index].position = spot_light.position;
+        frame_buffer.lights[current_light_index].falloff_start = spot_light.falloff_start;
+        frame_buffer.lights[current_light_index].falloff_end = spot_light.falloff_end;
+        frame_buffer.lights[current_light_index].spot_power = spot_light.spot_power;
 
         current_light_index++;
     }

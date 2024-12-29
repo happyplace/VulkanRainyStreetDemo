@@ -25,6 +25,16 @@ struct PointLight
     float falloff_end;
 };
 
+struct SpotLight
+{
+    DirectX::XMFLOAT3 rotation_euler;
+    DirectX::XMFLOAT3 strength;
+    DirectX::XMFLOAT3 position;
+    float falloff_start;
+    float falloff_end;
+    float spot_power;
+};
+
 struct Light
 {
     DirectX::XMFLOAT3 strength;
