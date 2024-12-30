@@ -101,3 +101,10 @@ set(SHADERC_SKIP_EXAMPLES YES)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/external/shaderc)
 include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/external/shaderc/libshaderc/include)
 target_link_libraries(VulkanRainyStreetDemo shaderc)
+
+set(FTL_BUILD_TESTS OFF CACHE BOOL  "Disable tests")
+set(FTL_BUILD_TESTS OFF CACHE BOOL  "Disable benchmarks")
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/external/FiberTaskingLib)
+include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/external/FiberTaskingLib/include)
+target_link_libraries(VulkanRainyStreetDemo ftl)
+

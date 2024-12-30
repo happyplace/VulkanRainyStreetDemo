@@ -35,3 +35,5 @@
 | SPIR-V Headers | external/shaderc/third_party/spirv-tools/external/spirv-headers |
 | SDL 2 | *(links against system library)* |
 | Vulkan | *(links against system library)* |
+| Fiber Tasking Lib | external/FiberTaskingLib |
+

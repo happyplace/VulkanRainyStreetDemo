@@ -1,0 +1,15 @@
+# Build files
+build*/
+
+# CLion Project files
+.idea/
+# CLion build files
+cmake-build*/
+
+
+# Visual Studio local files
+.vs/
+Folder.DotSettings.user
+
+# Lint output files
+clang-tidy-output.txt
