@@ -83,7 +83,7 @@ FrameResource* game_frame_render_begin_frame(Game* game)
     return frame_resource;
 }
 
-void game_frame_render_end_frame(FrameResource* frame_resource, Game* game)
+void game_frame_render_end_frame(FrameResource* frame_resource, Game* /*game*/)
 {
     vkCmdEndRenderPass(frame_resource->command_buffer);
 }

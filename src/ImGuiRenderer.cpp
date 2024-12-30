@@ -273,7 +273,7 @@ void imgui_renderer_on_resize(ImGuiRenderer* imgui_renderer, struct VulkanRender
     }
 }
 
-void imgui_renderer_draw_windows(Game* game, FrameResource* frame_resource)
+void imgui_renderer_draw_windows(Game* /*game*/, FrameResource* frame_resource)
 {
     game_imgui_stats_window(frame_resource);
     game_map_imgui_draw();
