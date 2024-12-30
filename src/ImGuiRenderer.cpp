@@ -1,4 +1,6 @@
 #include "ImGuiRenderer.h"
+
+#include <atomic>
 #include <array>
 #include <vulkan/vulkan_core.h>
 
@@ -25,6 +27,8 @@ struct ImGuiRenderer
     VkFramebuffer* framebuffers = nullptr;
 };
 
+static std::atomic_bool imgui_renderer_initialized = false;
+
 void imgui_renderer_init_assert(VkResult result)
 {
     VK_ASSERT(result);
@@ -50,6 +54,8 @@ void imgui_renderer_destroy(ImGuiRenderer* imgui_renderer, struct Game* game)
 {
     SDL_assert(imgui_renderer);
     SDL_assert(game);
+
+    imgui_renderer_initialized.store(false, std::memory_order_relaxed);
 
     vulkan_renderer_wait_device_idle(game->vulkan_renderer);
 
@@ -222,11 +228,18 @@ ImGuiRenderer* imgui_renderer_init(struct Game* game)
 
     imgui_renderer_on_resize(imgui_renderer, game->vulkan_renderer);
 
+    imgui_renderer_initialized.store(true, std::memory_order_relaxed);
+
     return imgui_renderer;
 }
 
 bool imgui_renderer_on_sdl_event(SDL_Event* sdl_event)
 {
+    if (!imgui_renderer_initialized.load())
+    {
+        return false;
+    }
+
     return ImGui_ImplSDL2_ProcessEvent(sdl_event);
 }
 
