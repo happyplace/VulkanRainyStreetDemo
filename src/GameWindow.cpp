@@ -34,7 +34,7 @@ GameWindow* game_window_init()
     return game_window;
 }
 
-void game_window_destory(GameWindow* game_window)
+void game_window_destroy(GameWindow* game_window)
 {
     SDL_assert(game_window);
 
@@ -50,26 +50,29 @@ void game_window_destory(GameWindow* game_window)
 
 void game_window_process_events(GameWindow* game_window)
 {
-    SDL_Event sdl_event;
-    while (SDL_PollEvent(&sdl_event) != 0)
+    while (!game_window_get_window_flag(game_window, GameWindowFlag::QuitRequested))
     {
-#ifdef IMGUI_ENABLED
-        // TODO: this is a weird dependency, we need a way to register, set a priority, and consume events
-        if (imgui_renderer_on_sdl_event(&sdl_event))
+        SDL_Event sdl_event;
+        if (SDL_WaitEventTimeout(&sdl_event, 125) == 1)
         {
-            continue;
-        }
+#ifdef IMGUI_ENABLED
+            // TODO: this is a weird dependency, we need a way to register, set a priority, and consume events
+            if (imgui_renderer_on_sdl_event(&sdl_event))
+            {
+                continue;
+            }
 #endif // IMGUI_ENABLED
 
-        if (sdl_event.type == SDL_QUIT)
-        {
-            game_window_set_window_flag(game_window, GameWindowFlag::QuitRequested, true);
-        }
-        else if (sdl_event.type == SDL_WINDOWEVENT_RESIZED)
-        {
-            if (sdl_event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
+            if (sdl_event.type == SDL_QUIT)
             {
-                game_window_set_window_flag(game_window, GameWindowFlag::ResizeRequested, true);
+                game_window_set_window_flag(game_window, GameWindowFlag::QuitRequested, true);
+            }
+            else if (sdl_event.type == SDL_WINDOWEVENT_RESIZED)
+            {
+                if (sdl_event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
+                {
+                    game_window_set_window_flag(game_window, GameWindowFlag::ResizeRequested, true);
+                }
             }
         }
     }

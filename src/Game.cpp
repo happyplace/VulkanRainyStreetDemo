@@ -52,7 +52,7 @@ void game_destroy(Game* game)
 
     if (game->game_window)
     {
-       game_window_destory(game->game_window);
+       game_window_destroy(game->game_window);
     }
 
     delete game;

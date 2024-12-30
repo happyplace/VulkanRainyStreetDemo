@@ -18,7 +18,7 @@ struct GameWindow
 };
 
 GameWindow* game_window_init();
-void game_window_destory(GameWindow* game_window);
+void game_window_destroy(GameWindow* game_window);
 
 void game_window_process_events(GameWindow* game_window);
 
