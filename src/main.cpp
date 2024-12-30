@@ -4,11 +4,6 @@
 #include "Game.h"
 #include "GameWindow.h"
 
-void fam_task(ftl::TaskScheduler* task_scheduler, void* arg)
-{
-    return;
-}
-
 int main(int argc, char** argv)
 {
     GameWindow* game_window = game_window_init();
@@ -17,14 +12,24 @@ int main(int argc, char** argv)
         return 1;
     }
 
+    ftl::TaskScheduler* task_scheduler = new ftl::TaskScheduler();
+    task_scheduler->Init();
+
+    GameInitParams game_init_params;
+    game_init_params.argc = argc;
+    game_init_params.argv = argv;
+    game_init_params.game = nullptr;
+    ftl::Task task = { game_init_task, &game_init_params };
+    task_scheduler->AddTask(task, ftl::TaskPriority::High);
+
     game_window_process_events(game_window);
 
-    //return game_run(argc, argv);
-    // ftl::TaskScheduler* task_scheduler = new ftl::TaskScheduler();
-    // task_scheduler->Init();
+    delete task_scheduler;
 
-    // ftl::Task task = { fam_task, nullptr };
-    // task_scheduler->AddTask(task, ftl::TaskPriority::High);
+    if (game_init_params.game)
+    {
+        game_destroy(game_init_params.game);
+    }
 
     game_window_destroy(game_window);
 

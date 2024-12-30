@@ -14,6 +14,11 @@
 #include "ImGuiRenderer.h"
 #include "PhongMeshRenderer.h"
 
+void game_init_task(ftl::TaskScheduler* task_scheduler, void* arg)
+{
+    GameInitParams* params = reinterpret_cast<GameInitParams*>(arg);
+}
+
 void game_destroy(Game* game)
 {
     SDL_assert(game);
@@ -50,24 +55,12 @@ void game_destroy(Game* game)
        vulkan_renderer_destroy(game->vulkan_renderer);
     }
 
-    if (game->game_window)
-    {
-       game_window_destroy(game->game_window);
-    }
-
     delete game;
 }
 
 Game* game_init()
 {
     Game* game = new Game();
-
-    game->game_window = game_window_init();
-    if (game->game_window == nullptr)
-    {
-        game_destroy(game);
-        return nullptr;
-    }
 
     game->vulkan_renderer = vulkan_renderer_init(game->game_window);
     if (game->vulkan_renderer == nullptr)

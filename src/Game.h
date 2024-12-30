@@ -10,6 +10,8 @@ struct GameTimer;
 struct PhongMeshRenderer;
 struct VulkanSharedResources;
 
+namespace ftl { class TaskScheduler; }
+
 struct Game
 {
     GameWindow* game_window = nullptr;
@@ -21,7 +23,16 @@ struct Game
     PhongMeshRenderer* mesh_renderer = nullptr;
 };
 
-int game_run(int argc, char** argv);
+struct GameInitParams
+{
+    int argc;
+    char** argv;
+    Game* game = nullptr;
+};
+
+void game_init_task(ftl::TaskScheduler* task_scheduler, void* arg);
+
+void game_destroy(Game* game);
 
 void game_abort();
 
