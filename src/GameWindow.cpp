@@ -82,15 +82,15 @@ void game_window_set_window_flag(GameWindow* game_window, GameWindowFlag flag, b
 {
     if (value)
     {
-        game_window->window_flags |= static_cast<uint64_t>(flag);
+        game_window->window_flags.fetch_or(static_cast<uint64_t>(flag));
     }
     else
     {
-        game_window->window_flags &= ~static_cast<uint64_t>(flag);
+        game_window->window_flags.fetch_and(~static_cast<uint64_t>(flag));
     }
 }
 
 bool game_window_get_window_flag(GameWindow* game_window, GameWindowFlag flag)
 {
-    return game_window->window_flags & static_cast<uint64_t>(flag);
+    return game_window->window_flags.load() & static_cast<uint64_t>(flag);
 }

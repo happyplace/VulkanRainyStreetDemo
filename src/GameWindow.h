@@ -1,6 +1,7 @@
 #ifndef VRSD_GameWindow_h_
 #define VRSD_GameWindow_h_
 
+#include <atomic>
 #include <cstdint>
 
 struct SDL_Window;
@@ -14,7 +15,7 @@ enum class GameWindowFlag : uint64_t
 struct GameWindow
 {
     SDL_Window* window = nullptr;
-    uint64_t window_flags = 0;
+    std::atomic<uint64_t> window_flags = 0;
 };
 
 GameWindow* game_window_init();
