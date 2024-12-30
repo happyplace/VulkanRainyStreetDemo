@@ -7,7 +7,7 @@ struct VulkanFrameResources;
 struct GameMap;
 struct ImGuiRenderer;
 struct GameTimer;
-struct MeshRenderer;
+struct PhongMeshRenderer;
 struct VulkanSharedResources;
 
 struct Game
@@ -18,7 +18,7 @@ struct Game
     VulkanSharedResources* shared_resources = nullptr;
     ImGuiRenderer* imgui_renderer = nullptr;
     GameTimer* game_timer = nullptr;
-    MeshRenderer* mesh_renderer = nullptr;
+    PhongMeshRenderer* mesh_renderer = nullptr;
 };
 
 int game_run(int argc, char** argv);

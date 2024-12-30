@@ -11,6 +11,7 @@
 #include "VulkanRenderer.h"
 #include "VulkanFrameResources.h"
 #include "GeometryLoader.h"
+#include "RenderDefines.h"
 
 void vulkan_renderer_destroy_samplers(VulkanSharedResources* vulkan_shared_resources, VulkanRenderer* vulkan_renderer)
 {
@@ -123,7 +124,7 @@ bool vulkan_shared_resources_init_samplers(VulkanSharedResources* vulkan_shared_
 
 bool vulkan_shared_resources_init_frame_buffer(VulkanSharedResources* vulkan_shared_resources, VulkanRenderer* vulkan_renderer)
 {
-    vulkan_shared_resources->frame_alignment_size = vulkan_renderer_calculate_uniform_buffer_size(vulkan_renderer, sizeof(Vulkan_FrameBuffer));
+    vulkan_shared_resources->frame_alignment_size = vulkan_renderer_calculate_uniform_buffer_size(vulkan_renderer, sizeof(MeshRenderer_FrameBuffer));
 
     VkBufferCreateInfo buffer_create_info;
     buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;

@@ -12,7 +12,7 @@
 #include "GameMap.h"
 #include "GameFrameRender.h"
 #include "ImGuiRenderer.h"
-#include "MeshRenderer.h"
+#include "PhongMeshRenderer.h"
 
 void game_destroy(Game* game)
 {
@@ -20,7 +20,7 @@ void game_destroy(Game* game)
 
     if (game->mesh_renderer)
     {
-        mesh_renderer_destroy(game->mesh_renderer, game);
+        phong_mesh_renderer_destroy(game->mesh_renderer, game);
     }
 
     if (game->game_timer)
@@ -106,7 +106,7 @@ Game* game_init()
         return nullptr;
     }
 
-    game->mesh_renderer = mesh_renderer_init(game);
+    game->mesh_renderer = phong_mesh_renderer_init(game);
     if (game->mesh_renderer == nullptr)
     {
         game_destroy(game);

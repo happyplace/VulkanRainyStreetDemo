@@ -13,6 +13,7 @@
 #include "imgui_impl_vulkan.h"
 
 #include "Game.h"
+#include "GameMap.h"
 #include "GameWindow.h"
 #include "VulkanRenderer.h"
 #include "VulkanFrameResources.h"
@@ -262,6 +263,7 @@ void imgui_renderer_on_resize(ImGuiRenderer* imgui_renderer, struct VulkanRender
 void imgui_renderer_draw_windows(Game* game, FrameResource* frame_resource)
 {
     game_imgui_stats_window(frame_resource);
+    game_map_imgui_draw();
 }
 
 void imgui_renderer_draw(ImGuiRenderer* imgui_renderer, struct Game* game, struct FrameResource* frame_resource)
