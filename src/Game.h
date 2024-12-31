@@ -21,6 +21,7 @@ struct Game
     ImGuiRenderer* imgui_renderer = nullptr;
     GameTimer* game_timer = nullptr;
     PhongMeshRenderer* mesh_renderer = nullptr;
+    GameMap* game_map = nullptr;
 };
 
 struct GameInitParams
@@ -28,10 +29,10 @@ struct GameInitParams
     int argc;
     char** argv;
     Game* game = nullptr;
+    GameWindow* game_window = nullptr;
 };
 
 void game_init_task(ftl::TaskScheduler* task_scheduler, void* arg);
-
 void game_destroy(Game* game);
 
 void game_abort();

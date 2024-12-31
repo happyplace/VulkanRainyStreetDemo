@@ -1,5 +1,7 @@
 #include "Game.h"
 
+#include "ftl/task_scheduler.h"
+
 #include "GameTimer.h"
 #include "SDL_assert.h"
 
@@ -14,14 +16,14 @@
 #include "ImGuiRenderer.h"
 #include "PhongMeshRenderer.h"
 
-void game_init_task(ftl::TaskScheduler* task_scheduler, void* arg)
-{
-    GameInitParams* params = reinterpret_cast<GameInitParams*>(arg);
-}
-
 void game_destroy(Game* game)
 {
     SDL_assert(game);
+
+    if (game->game_map)
+    {
+        game_map_destroy(game->game_map);
+    }
 
     if (game->mesh_renderer)
     {
@@ -58,57 +60,6 @@ void game_destroy(Game* game)
     delete game;
 }
 
-Game* game_init()
-{
-    Game* game = new Game();
-
-    game->vulkan_renderer = vulkan_renderer_init(game->game_window);
-    if (game->vulkan_renderer == nullptr)
-    {
-        game_destroy(game);
-        return nullptr;
-    }
-
-    game->frame_resources = vulkan_frame_resources_init(game->vulkan_renderer);
-    if (game->frame_resources == nullptr)
-    {
-        game_destroy(game);
-        return nullptr;
-    }
-
-    game->shared_resources = vulkan_shared_resources_init(game->vulkan_renderer);
-    if (game->shared_resources == nullptr)
-    {
-        game_destroy(game);
-        return nullptr;
-    }
-
-#ifdef IMGUI_ENABLED
-    game->imgui_renderer = imgui_renderer_init(game);
-    if (game->imgui_renderer == nullptr)
-    {
-        game_destroy(game);
-        return nullptr;
-    }
-#endif // IMGUI_ENABLED
-
-    game->game_timer = game_timer_init();
-    if (game->game_timer == nullptr)
-    {
-        game_destroy(game);
-        return nullptr;
-    }
-
-    game->mesh_renderer = phong_mesh_renderer_init(game);
-    if (game->mesh_renderer == nullptr)
-    {
-        game_destroy(game);
-        return nullptr;
-    }
-
-    return game;
-}
-
 void game_resize_if_required(Game* game)
 {
     if (!game_window_get_window_flag(game->game_window, GameWindowFlag::ResizeRequested))
@@ -122,59 +73,6 @@ void game_resize_if_required(Game* game)
 #ifdef IMGUI_ENABLED
     imgui_renderer_on_resize(game->imgui_renderer, game->vulkan_renderer);
 #endif // IMGUI_ENABLED
-}
-
-int game_run(int argc, char** argv)
-{
-    Game* game = game_init();
-    if (game == nullptr)
-    {
-        return 1;
-    }
-
-    GameMap* game_map = game_map_init();
-    if (game_map == nullptr)
-    {
-        return 1;
-    }
-
-    game_map_load(game_map);
-
-    game_timer_reset(game->game_timer);
-
-    while (!game_window_get_window_flag(game->game_window, GameWindowFlag::QuitRequested))
-    {
-        game_window_process_events(game->game_window);
-        game_resize_if_required(game);
-
-        game_timer_tick(game->game_timer);
-
-        FrameResource* frame_resource = game_frame_render_begin_frame(game);
-
-        if (frame_resource == nullptr)
-        {
-            continue;
-        }
-
-        frame_resource->time.delta_time = game_timer_delta_time(game->game_timer);
-        frame_resource->time.total_time = game_timer_total_time(game->game_timer);
-        frame_resource->time.frame_number = game_timer_frame_count(game->game_timer);
-
-        game_map_update(game_map, frame_resource, game);
-        game_map_render(game_map, frame_resource, game);
-
-        game_frame_render_end_frame(frame_resource, game);
-
-#ifdef IMGUI_ENABLED
-        imgui_renderer_draw(game->imgui_renderer, game, frame_resource);
-#endif // IMGUI_ENABLED
-
-        game_frame_render_submit(frame_resource, game);
-    }
-
-    game_map_destroy(game_map);
-    game_destroy(game);
-    return 0;
 }
 
 void game_imgui_stats_window(struct FrameResource* frame_resource)
@@ -206,4 +104,124 @@ void game_imgui_stats_window(struct FrameResource* frame_resource)
 void game_abort()
 {
     SDL_assert(false);
+}
+
+void game_frame_task(ftl::TaskScheduler* task_scheduler, void* arg)
+{
+    Game* game = reinterpret_cast<Game*>(arg);
+
+    if (game_window_get_window_flag(game->game_window, GameWindowFlag::QuitRequested))
+    {
+        return;
+    }
+
+    game_resize_if_required(game);
+
+    game_timer_tick(game->game_timer);
+
+    FrameResource* frame_resource = game_frame_render_begin_frame(game);
+
+    if (frame_resource == nullptr)
+    {
+        task_scheduler->AddTask({ game_frame_task, game }, ftl::TaskPriority::High);
+        return;
+    }
+
+    frame_resource->time.delta_time = game_timer_delta_time(game->game_timer);
+    frame_resource->time.total_time = game_timer_total_time(game->game_timer);
+    frame_resource->time.frame_number = game_timer_frame_count(game->game_timer);
+
+    GameMapUpdateParams game_map_update_params;
+    game_map_update_params.game = game;
+    game_map_update_params.game_map = game->game_map;
+    game_map_update_params.frame_resource = frame_resource;
+
+    ftl::WaitGroup wait_group(task_scheduler);
+    task_scheduler->AddTask({ game_map_update_task, &game_map_update_params }, ftl::TaskPriority::High, &wait_group);
+    wait_group.Wait();
+
+    game_map_render(game->game_map, frame_resource, game);
+
+    game_frame_render_end_frame(frame_resource, game);
+
+#ifdef IMGUI_ENABLED
+    imgui_renderer_draw(game->imgui_renderer, game, frame_resource);
+#endif // IMGUI_ENABLED
+
+    game_frame_render_submit(frame_resource, game);
+
+    task_scheduler->AddTask({ game_frame_task, game }, ftl::TaskPriority::High);
+}
+
+void game_init_task(ftl::TaskScheduler* task_scheduler, void* arg)
+{
+    GameInitParams* params = reinterpret_cast<GameInitParams*>(arg);
+
+    Game* game = new Game();
+    params->game = game;
+
+    game->game_window = params->game_window;
+
+    game->vulkan_renderer = vulkan_renderer_init(game->game_window);
+    if (game->vulkan_renderer == nullptr)
+    {
+        game_window_set_window_flag(game->game_window, GameWindowFlag::QuitRequested, true);
+        return;
+    }
+
+    game->frame_resources = vulkan_frame_resources_init(game->vulkan_renderer);
+    if (game->frame_resources == nullptr)
+    {
+        game_window_set_window_flag(game->game_window, GameWindowFlag::QuitRequested, true);
+        return;
+    }
+
+    game->shared_resources = vulkan_shared_resources_init(game->vulkan_renderer);
+    if (game->shared_resources == nullptr)
+    {
+        game_window_set_window_flag(game->game_window, GameWindowFlag::QuitRequested, true);
+        return;
+    }
+
+#ifdef IMGUI_ENABLED
+    game->imgui_renderer = imgui_renderer_init(game);
+    if (game->imgui_renderer == nullptr)
+    {
+        game_window_set_window_flag(game->game_window, GameWindowFlag::QuitRequested, true);
+        return;
+    }
+#endif // IMGUI_ENABLED
+
+    game->game_timer = game_timer_init();
+    if (game->game_timer == nullptr)
+    {
+        game_window_set_window_flag(game->game_window, GameWindowFlag::QuitRequested, true);
+        return;
+    }
+
+    game->mesh_renderer = phong_mesh_renderer_init(game);
+    if (game->mesh_renderer == nullptr)
+    {
+        game_window_set_window_flag(game->game_window, GameWindowFlag::QuitRequested, true);
+        return;
+    }
+
+    GameMapInitParams game_map_init_params;
+    game_map_init_params.game = game;
+    game_map_init_params.game_map = nullptr;
+
+    ftl::WaitGroup wait_group(task_scheduler);
+    task_scheduler->AddTask({ game_map_init_and_load_task, &game_map_init_params }, ftl::TaskPriority::High, &wait_group);
+    wait_group.Wait();
+
+    game->game_map = game_map_init_params.game_map;
+    if (game->game_map == nullptr)
+    {
+        game_window_set_window_flag(game->game_window, GameWindowFlag::QuitRequested, true);
+        return;
+    }
+
+    game_timer_reset(game->game_timer);
+
+    task_scheduler->AddTask({ game_frame_task, game }, ftl::TaskPriority::High);
 }

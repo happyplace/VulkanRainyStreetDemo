@@ -19,6 +19,7 @@ int main(int argc, char** argv)
     game_init_params.argc = argc;
     game_init_params.argv = argv;
     game_init_params.game = nullptr;
+    game_init_params.game_window = game_window;
     ftl::Task task = { game_init_task, &game_init_params };
     task_scheduler->AddTask(task, ftl::TaskPriority::High);
 
