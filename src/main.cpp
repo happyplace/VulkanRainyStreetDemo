@@ -12,8 +12,12 @@ int main(int argc, char** argv)
         return 1;
     }
 
+    ftl::TaskSchedulerInitOptions options;
+    options.Behavior = ftl::EmptyQueueBehavior::Sleep;
+    options.ThreadPoolSize = 4;
+
     ftl::TaskScheduler* task_scheduler = new ftl::TaskScheduler();
-    task_scheduler->Init();
+    task_scheduler->Init(options);
 
     GameInitParams game_init_params;
     game_init_params.argc = argc;
