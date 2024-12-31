@@ -255,8 +255,6 @@ bool vulkan_renderer_init_device(VulkanRenderer* vulkan_renderer)
     int8_t device_type_score = -1;
     VkPhysicalDevice physical_device = VK_NULL_HANDLE;
 
-    SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "bro please %i", physical_device_count);
-
     for (uint32_t i = 0; i < physical_device_count; ++i)
     {
         VkPhysicalDeviceProperties device_properties;
