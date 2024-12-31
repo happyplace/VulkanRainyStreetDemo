@@ -22,7 +22,11 @@
 #include "GameWindow.h"
 #include "VulkanFrameResources.h" // needed for VULKAN_FRAME_RESOURCES_FRAME_RESOURCE_COUNT
 
-#ifdef VK_DEBUG
+#if defined(VK_DEBUG) && !defined(NDEBUG)
+#define VRSD_DEBUG
+#endif // defined(VK_DEBUG) && !defined(NDEBUG)
+
+#ifdef VRSD_DEBUG
 static VKAPI_ATTR VkBool32 VKAPI_CALL vulkan_renderer_debug_callback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT /*type*/,
     uint64_t /*object*/, size_t /*location*/, int32_t /*message_code*/, const char* layer_prefix, const char* message, void* /*user_data*/)
 {
@@ -44,7 +48,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL vulkan_renderer_debug_callback(VkDebugRepo
     }
     return VK_FALSE;
 }
-#endif // VK_DEBUG
+#endif // VRSD_DEBUG
 
 bool vulkan_renderer_find_memory_by_flag_and_type(VulkanRenderer* vulkan_renderer, VkMemoryPropertyFlagBits memory_property_flag_bits, uint32_t memory_type_bits, uint32_t* out_memory_type_index)
 {
@@ -111,12 +115,10 @@ bool vulkan_renderer_init_instance(VulkanRenderer* vulkan_renderer, GameWindow* 
     application_info.apiVersion = VK_API_VERSION_1_0;
 
     std::vector<const char*> enabled_layer_names;
-#ifdef VK_DEBUG
+#ifdef VRSD_DEBUG
     enabled_layer_names.push_back("VK_LAYER_KHRONOS_validation");
-#endif // VK_DEBUG
+#endif // VRSD_DEBUG
 
-// The Linux Nvidia drivers are able to get instance_layer_properties in optmized builds so guard all of this for debug code
-#ifdef _DEBUG
     for (const char* layer_name : enabled_layer_names)
     {
         bool layer_available = false;
@@ -136,7 +138,6 @@ bool vulkan_renderer_init_instance(VulkanRenderer* vulkan_renderer, GameWindow* 
             return false;
         }
     }
-#endif // _DEBUG
 
     VkInstanceCreateInfo instance_info;
     instance_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -146,7 +147,7 @@ bool vulkan_renderer_init_instance(VulkanRenderer* vulkan_renderer, GameWindow* 
     instance_info.enabledLayerCount = static_cast<uint32_t>(enabled_layer_names.size());
     instance_info.ppEnabledLayerNames = enabled_layer_names.data();
 
-#ifdef VK_DEBUG
+#ifdef VRSD_DEBUG
     VkDebugReportCallbackCreateInfoEXT debug_report_callback_create_info;
     debug_report_callback_create_info.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
     debug_report_callback_create_info.pNext = nullptr;
@@ -155,7 +156,7 @@ bool vulkan_renderer_init_instance(VulkanRenderer* vulkan_renderer, GameWindow* 
     debug_report_callback_create_info.pUserData = nullptr;
 
     instance_info.pNext = &debug_report_callback_create_info;
-#endif // VK_DEBUG
+#endif // VRSD_DEBUG
 
 #ifdef VK_PORTABILITY
     instance_info.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
@@ -164,7 +165,7 @@ bool vulkan_renderer_init_instance(VulkanRenderer* vulkan_renderer, GameWindow* 
     enabled_extension_names.push_back("VK_KHR_get_physical_device_properties2");
 #endif // VK_PORTABILITY
 
-#ifdef VK_DEBUG
+#ifdef VRSD_DEBUG
     for (const VkExtensionProperties& extension_properties : instance_extension_properties)
     {
         if (strcmp(extension_properties.extensionName, VK_EXT_DEBUG_REPORT_EXTENSION_NAME) == 0)
@@ -173,10 +174,10 @@ bool vulkan_renderer_init_instance(VulkanRenderer* vulkan_renderer, GameWindow* 
             break;
         }
     }
-#endif // VK_DEBUG
+#endif // VRSD_DEBUG
 
 // The Linux Nvidia drivers are able to get instance_layer_properties in optmized builds so guard all of this for debug code
-#ifdef VK_DEBUG
+#ifdef VRSD_DEBUG
     for (const char* requested_extension_name : enabled_extension_names)
     {
         bool extension_available = false;
@@ -196,7 +197,7 @@ bool vulkan_renderer_init_instance(VulkanRenderer* vulkan_renderer, GameWindow* 
             return false;
         }
     }
-#endif // VK_DEBUG
+#endif // VRSD_DEBUG
 
     instance_info.enabledExtensionCount = static_cast<uint32_t>(enabled_extension_names.size());
     instance_info.ppEnabledExtensionNames = enabled_extension_names.data();
@@ -231,12 +232,12 @@ bool vulkan_renderer_init_instance(VulkanRenderer* vulkan_renderer, GameWindow* 
         return false;
     }
 
-#ifdef VK_DEBUG
+#ifdef VRSD_DEBUG
     PFN_vkCreateDebugReportCallbackEXT vkCreateDebugReportCallbackEXT = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(vulkan_renderer->instance, "vkCreateDebugReportCallbackEXT");
     SDL_assert(vkCreateDebugReportCallbackEXT);
 
     VK_ASSERT(vkCreateDebugReportCallbackEXT(vulkan_renderer->instance, &debug_report_callback_create_info, s_allocator, &vulkan_renderer->debug_report_callback_ext));
-#endif // VK_DEBUG
+#endif // VRSD_DEBUG
 
     return true;
 }
@@ -253,6 +254,8 @@ bool vulkan_renderer_init_device(VulkanRenderer* vulkan_renderer)
     int32_t compute_queue_index = -1;
     int8_t device_type_score = -1;
     VkPhysicalDevice physical_device = VK_NULL_HANDLE;
+
+    SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "bro please %i", physical_device_count);
 
     for (uint32_t i = 0; i < physical_device_count; ++i)
     {
@@ -322,7 +325,7 @@ bool vulkan_renderer_init_device(VulkanRenderer* vulkan_renderer)
     vulkan_renderer->compute_queue_index = compute_queue_index;
     vulkan_renderer->physical_device = physical_device;
 
-    uint32_t device_extension_count;
+    uint32_t device_extension_count = 0;
     VK_ASSERT(vkEnumerateDeviceExtensionProperties(vulkan_renderer->physical_device, nullptr, &device_extension_count, nullptr));
 
     std::vector<VkExtensionProperties> device_extensions(device_extension_count);
@@ -956,7 +959,7 @@ VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window)
 
 void vulkan_renderer_destroy_instance(VulkanRenderer* vulkan_renderer)
 {
-#ifdef VK_DEBUG
+#ifdef VRSD_DEBUG
     if (vulkan_renderer->debug_report_callback_ext)
     {
         PFN_vkDestroyDebugReportCallbackEXT vkDestroyDebugReportCallbackEXT = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(vulkan_renderer->instance, "vkDestroyDebugReportCallbackEXT");
@@ -964,7 +967,7 @@ void vulkan_renderer_destroy_instance(VulkanRenderer* vulkan_renderer)
 
         vkDestroyDebugReportCallbackEXT(vulkan_renderer->instance, vulkan_renderer->debug_report_callback_ext, s_allocator);
     }
-#endif // VK_DEBUG
+#endif // VRSD_DEBUG
 
     if (vulkan_renderer->window_surface)
     {

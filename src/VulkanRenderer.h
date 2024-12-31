@@ -13,7 +13,11 @@ VK_DEFINE_HANDLE(VmaAllocator);
 
 constexpr VkAllocationCallbacks* s_allocator = nullptr;
 
-#define VK_ASSERT(X) SDL_assert(VK_SUCCESS == X)
+#if defined(NDEBUG)
+    #define VK_ASSERT(X) X
+#else
+    #define VK_ASSERT(X) SDL_assert(VK_SUCCESS == X)
+#endif // defined(NDEBUG)
 
 struct VulkanRenderer
 {
