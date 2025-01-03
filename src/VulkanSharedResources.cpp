@@ -1,10 +1,11 @@
 #include "VulkanSharedResources.h"
 
+#include "ftl/task_scheduler.h"
+
 #include <SDL_assert.h>
 
 #include <cstring>
 #include <vulkan/vulkan.h>
-#include <vulkan/vulkan_core.h>
 
 #include "vk_mem_alloc.h"
 
@@ -340,51 +341,86 @@ bool vulkan_shared_resources_init_mesh_resource_with_geometry(Geometry* geometry
     return true;
 }
 
-bool vulkan_shared_resources_init_mesh_resources(VulkanSharedResources* vulkan_shared_resources, VulkanRenderer* vulkan_renderer)
+struct InitMeshResourcesParams
 {
-    vulkan_shared_resources->mesh_resources = new VulkanMeshResource[static_cast<size_t>(VulkanMeshType::COUNT)];
-    for (size_t i = 0; i < static_cast<size_t>(VulkanMeshType::COUNT); ++i)
+    VulkanSharedResources* vulkan_shared_resources = nullptr;
+    VulkanRenderer* vulkan_renderer = nullptr;
+};
+
+void vulkan_shared_resources_load_cube_geometry_task(ftl::TaskScheduler* /*task_scheduler*/, void* arg)
+{
+    InitMeshResourcesParams* params = reinterpret_cast<InitMeshResourcesParams*>(arg);
+
+    constexpr VulkanMeshType cube_type = VulkanMeshType::Cube;
+    VulkanMeshResource* vulkan_mesh_resource = 
+        &params->vulkan_shared_resources->mesh_resources[static_cast<size_t>(cube_type)];
+
+    Geometry* geometry = geometry_loader_load_cube();
+    if (!vulkan_shared_resources_init_mesh_resource_with_geometry(
+            geometry, params->vulkan_renderer, vulkan_mesh_resource))
     {
-        VulkanMeshResource& vulkan_mesh_resource = vulkan_shared_resources->mesh_resources[i];
+        SDL_assert(false);
+        return;
+    }
+
+    vulkan_mesh_resource->resource_loaded.store(true, std::memory_order_release);
+}
+
+void vulkan_shared_resources_init_mesh_resources_task(ftl::TaskScheduler* task_scheduler, void* arg)
+{
+    InitMeshResourcesParams* params = reinterpret_cast<InitMeshResourcesParams*>(arg);
+    
+    constexpr uint32_t mesh_load_task_count = 1;
+    ftl::Task mesh_load_tasks[mesh_load_task_count];
+
+    mesh_load_tasks[0] = { vulkan_shared_resources_load_cube_geometry_task, params };
+
+    ftl::WaitGroup wait_group(task_scheduler);
+    task_scheduler->AddTasks(mesh_load_task_count, mesh_load_tasks, ftl::TaskPriority::High, &wait_group);
+    wait_group.Wait();
+
+    delete params;
+}
+
+void vulkan_shared_resources_init_task(ftl::TaskScheduler* task_scheduler, void* arg)
+{
+    VulkanSharedResourcesInitParams* params = reinterpret_cast<VulkanSharedResourcesInitParams*>(arg);
+    params->vulkan_shared_resources = new VulkanSharedResources();
+
+    if (!vulkan_shared_resources_init_samplers(params->vulkan_shared_resources, params->vulkan_renderer))
+    {
+        params->init_successful = false;
+        return;
+    }
+
+    if (!vulkan_shared_resources_init_frame_buffer(params->vulkan_shared_resources, params->vulkan_renderer))
+    {
+        params->init_successful = false;
+        return;
+    }
+
+    params->vulkan_shared_resources->mesh_resources = new VulkanMeshResource[static_cast<size_t>(VulkanMeshType::COUNT)];
+    for (uint32_t i = 0; i < static_cast<uint32_t>(VulkanMeshType::COUNT); ++i)
+    {
+        VulkanMeshResource& vulkan_mesh_resource = params->vulkan_shared_resources->mesh_resources[i];
+
+        vulkan_mesh_resource.resource_loaded.store(false, std::memory_order_release);
         vulkan_mesh_resource.vertex_buffer = VK_NULL_HANDLE;
         vulkan_mesh_resource.vertex_allocation = VK_NULL_HANDLE;
         vulkan_mesh_resource.index_buffer = VK_NULL_HANDLE;
         vulkan_mesh_resource.index_allocation = VK_NULL_HANDLE;
+        vulkan_mesh_resource.index_count = 0;
     }
 
-    Geometry* geometry = geometry_loader_load_cube();
-    if (!vulkan_shared_resources_init_mesh_resource_with_geometry(geometry, vulkan_renderer,
-        &vulkan_shared_resources->mesh_resources[static_cast<size_t>(VulkanMeshType::Cube)]))
-    {
-        return false;
-    }
+    InitMeshResourcesParams* init_mesh_resources_params = new InitMeshResourcesParams();
+    init_mesh_resources_params->vulkan_renderer = params->vulkan_renderer;
+    init_mesh_resources_params->vulkan_shared_resources = params->vulkan_shared_resources;
 
-    return true;
-}
+    ftl::Task init_mesh_resources_task = { vulkan_shared_resources_init_mesh_resources_task, init_mesh_resources_params };
 
-VulkanSharedResources* vulkan_shared_resources_init(struct VulkanRenderer* vulkan_renderer)
-{
-    VulkanSharedResources* vulkan_shared_resources = new VulkanSharedResources();
+    task_scheduler->AddTask(init_mesh_resources_task, ftl::TaskPriority::High);
 
-    if (!vulkan_shared_resources_init_samplers(vulkan_shared_resources, vulkan_renderer))
-    {
-        vulkan_shared_resources_destroy(vulkan_shared_resources, vulkan_renderer);
-        return nullptr;
-    }
-
-    if (!vulkan_shared_resources_init_frame_buffer(vulkan_shared_resources, vulkan_renderer))
-    {
-        vulkan_shared_resources_destroy(vulkan_shared_resources, vulkan_renderer);
-        return nullptr;
-    }
-
-    if (!vulkan_shared_resources_init_mesh_resources(vulkan_shared_resources, vulkan_renderer))
-    {
-        vulkan_shared_resources_destroy(vulkan_shared_resources, vulkan_renderer);
-        return nullptr;
-    }
-
-    return vulkan_shared_resources;
+    params->init_successful = true;    
 }
 
 VkSampler vulkan_shared_resources_get_sampler(VulkanSharedResources* vulkan_shared_resources, VulkanSharedResourcesSamplerType sampler_type)
@@ -410,6 +446,13 @@ VulkanMeshResource* vulkan_shared_resources_get_mesh(VulkanSharedResources* vulk
     if (vulkan_mesh_type_index >= static_cast<uint32_t>(VulkanMeshType::COUNT))
     {
         SDL_assert(false);
+        return nullptr;
+    }
+
+    VulkanMeshResource* vulkan_mesh_resource = &vulkan_shared_resources->mesh_resources[vulkan_mesh_type_index];
+
+    if (!vulkan_mesh_resource->resource_loaded.load(std::memory_order_release))
+    {
         return nullptr;
     }
 

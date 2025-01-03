@@ -1,5 +1,4 @@
 #include "ftl/task_scheduler.h"
-#include "ftl/wait_group.h"
 
 #include "Game.h"
 #include "GameWindow.h"

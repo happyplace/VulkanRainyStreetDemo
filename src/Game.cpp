@@ -1,5 +1,7 @@
 #include "Game.h"
 
+#include <array>
+
 #include "ftl/task_scheduler.h"
 
 #include "GameTimer.h"
@@ -176,13 +178,6 @@ void game_init_task(ftl::TaskScheduler* task_scheduler, void* arg)
         return;
     }
 
-    game->shared_resources = vulkan_shared_resources_init(game->vulkan_renderer);
-    if (game->shared_resources == nullptr)
-    {
-        game_window_set_window_flag(game->game_window, GameWindowFlag::QuitRequested, true);
-        return;
-    }
-
 #ifdef IMGUI_ENABLED
     game->imgui_renderer = imgui_renderer_init(game);
     if (game->imgui_renderer == nullptr)
@@ -199,23 +194,40 @@ void game_init_task(ftl::TaskScheduler* task_scheduler, void* arg)
         return;
     }
 
-    game->mesh_renderer = phong_mesh_renderer_init(game);
-    if (game->mesh_renderer == nullptr)
+    constexpr uint32_t parallel_init_task_count = 2;
+    ftl::Task parallel_init_tasks[parallel_init_task_count];
+
+    GameMapInitParams game_map_init_params;
+    game_map_init_params.game = game;
+    game_map_init_params.game_map = nullptr;
+    parallel_init_tasks[0] = { game_map_init_and_load_task, &game_map_init_params };
+
+    VulkanSharedResourcesInitParams vulkan_shared_resources_init_params;
+    vulkan_shared_resources_init_params.vulkan_renderer = game->vulkan_renderer;
+    vulkan_shared_resources_init_params.vulkan_shared_resources = nullptr;
+    vulkan_shared_resources_init_params.init_successful = false;
+    parallel_init_tasks[1] = { vulkan_shared_resources_init_task, &vulkan_shared_resources_init_params };
+
+    ftl::WaitGroup wait_group(task_scheduler);
+    task_scheduler->AddTasks(parallel_init_task_count, parallel_init_tasks, ftl::TaskPriority::High, &wait_group);
+    wait_group.Wait();
+
+    game->game_map = game_map_init_params.game_map;
+    game->shared_resources = vulkan_shared_resources_init_params.vulkan_shared_resources;
+    if (game->game_map == nullptr || game->shared_resources == nullptr)
     {
         game_window_set_window_flag(game->game_window, GameWindowFlag::QuitRequested, true);
         return;
     }
 
-    GameMapInitParams game_map_init_params;
-    game_map_init_params.game = game;
-    game_map_init_params.game_map = nullptr;
+    if (!vulkan_shared_resources_init_params.init_successful)
+    {
+        game_window_set_window_flag(game->game_window, GameWindowFlag::QuitRequested, true);
+        return;
+    }
 
-    ftl::WaitGroup wait_group(task_scheduler);
-    task_scheduler->AddTask({ game_map_init_and_load_task, &game_map_init_params }, ftl::TaskPriority::High, &wait_group);
-    wait_group.Wait();
-
-    game->game_map = game_map_init_params.game_map;
-    if (game->game_map == nullptr)
+    game->mesh_renderer = phong_mesh_renderer_init(game);
+    if (game->mesh_renderer == nullptr)
     {
         game_window_set_window_flag(game->game_window, GameWindowFlag::QuitRequested, true);
         return;

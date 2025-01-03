@@ -893,36 +893,41 @@ void phong_mesh_renderer_render(PhongMeshRenderer* mesh_renderer, struct FrameRe
         frame_buffer_offset,
         static_cast<VkDeviceSize>(sizeof(MeshRenderer_FrameBuffer))));
 
-    ObjectBuffer object_buffer;
+    {
+        constexpr VulkanMeshType vulkan_mesh_type = VulkanMeshType::Cube;
+        const VulkanMeshResource* vulkan_mesh_resource = vulkan_shared_resources_get_mesh(game->shared_resources, vulkan_mesh_type);
+        if (vulkan_mesh_resource == nullptr)
+        {
+            return;
+        }
 
-    XMMATRIX world = XMMatrixScaling(1.0f, 1.0f, 1.0f) * XMMatrixRotationRollPitchYaw(XMConvertToRadians(0.0f), XMConvertToRadians(0.0f), XMConvertToRadians(0.0f));
-    world = XMMatrixTranspose(world);
+        ObjectBuffer object_buffer;
 
-    XMStoreFloat4x4(&object_buffer.world, world);
+        XMMATRIX world = XMMatrixScaling(1.0f, 1.0f, 1.0f) * XMMatrixRotationRollPitchYaw(XMConvertToRadians(0.0f), XMConvertToRadians(0.0f), XMConvertToRadians(0.0f));
+        world = XMMatrixTranspose(world);
 
-    object_buffer.material.diffuse_albedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-	object_buffer.material.fresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05);
-	object_buffer.material.shininess = 0.7f;
+        XMStoreFloat4x4(&object_buffer.world, world);
 
-    VulkanMeshType vulkan_mesh_type = VulkanMeshType::Cube;
+        object_buffer.material.diffuse_albedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+        object_buffer.material.fresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05);
+        object_buffer.material.shininess = 0.7f;
 
-    uint32_t object_buffer_offset = phong_mesh_renderer_get_object_buffer_offset(mesh_renderer, frame_resource, 0);
+        uint32_t object_buffer_offset = phong_mesh_renderer_get_object_buffer_offset(mesh_renderer, frame_resource, 0);
 
-    VK_ASSERT(vmaCopyMemoryToAllocation(
-        game->vulkan_renderer->vma_allocator,
-        &object_buffer,
-        mesh_renderer->object_allocation,
-        object_buffer_offset,
-        static_cast<VkDeviceSize>(sizeof(ObjectBuffer))));
+        VK_ASSERT(vmaCopyMemoryToAllocation(
+            game->vulkan_renderer->vma_allocator,
+            &object_buffer,
+            mesh_renderer->object_allocation,
+            object_buffer_offset,
+            static_cast<VkDeviceSize>(sizeof(ObjectBuffer))));
 
-    vkCmdBindDescriptorSets(frame_resource->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_renderer->pipeline_layout, 1, 1,
-        &mesh_renderer->descriptor_sets[1], 1, &object_buffer_offset);
+        vkCmdBindDescriptorSets(frame_resource->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_renderer->pipeline_layout, 1, 1,
+            &mesh_renderer->descriptor_sets[1], 1, &object_buffer_offset);
 
-    VulkanMeshResource* vulkan_mesh_resource = vulkan_shared_resources_get_mesh(game->shared_resources, vulkan_mesh_type);
+        const VkDeviceSize vertex_offset = 0;
+        vkCmdBindVertexBuffers(frame_resource->command_buffer, 0, 1, &vulkan_mesh_resource->vertex_buffer, &vertex_offset);
+        vkCmdBindIndexBuffer(frame_resource->command_buffer, vulkan_mesh_resource->index_buffer, 0, VK_INDEX_TYPE_UINT32);
 
-    const VkDeviceSize vertex_offset = 0;
-    vkCmdBindVertexBuffers(frame_resource->command_buffer, 0, 1, &vulkan_mesh_resource->vertex_buffer, &vertex_offset);
-    vkCmdBindIndexBuffer(frame_resource->command_buffer, vulkan_mesh_resource->index_buffer, 0, VK_INDEX_TYPE_UINT32);
-
-    vkCmdDrawIndexed(frame_resource->command_buffer, vulkan_mesh_resource->index_count, 1, 0, 0, 0);
+        vkCmdDrawIndexed(frame_resource->command_buffer, vulkan_mesh_resource->index_count, 1, 0, 0, 0);
+    }
 }
