@@ -18,9 +18,17 @@
 #include "ImGuiRenderer.h"
 #include "PhongMeshRenderer.h"
 
+static Game* s_game = nullptr;
+
+Game* game_get_instance()
+{
+    return s_game;
+}
+
 void game_destroy(Game* game)
 {
     SDL_assert(game);
+    s_game = nullptr;
 
     if (game->game_map)
     {
@@ -159,7 +167,8 @@ void game_init_task(ftl::TaskScheduler* task_scheduler, void* arg)
 {
     GameInitParams* params = reinterpret_cast<GameInitParams*>(arg);
 
-    Game* game = new Game();
+    s_game = new Game();
+    Game* game = s_game;
     params->game = game;
 
     game->game_window = params->game_window;

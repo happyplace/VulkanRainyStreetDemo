@@ -72,6 +72,7 @@ void vulkan_shared_resources_destroy(VulkanSharedResources* vulkan_shared_resour
 
     vulkan_renderer_wait_device_idle(vulkan_renderer);
 
+    vulkan_shared_resources_destroy_worker_thread();
     vulkan_shared_resources_destroy_mesh_resources(vulkan_shared_resources, vulkan_renderer);
     vulkan_shared_resources_destroy_frame_buffer(vulkan_shared_resources, vulkan_renderer);
     vulkan_renderer_destroy_samplers(vulkan_shared_resources, vulkan_renderer);
@@ -153,110 +154,63 @@ bool vulkan_shared_resources_init_frame_buffer(VulkanSharedResources* vulkan_sha
     return result == VK_SUCCESS;
 }
 
-bool vulkan_shared_resources_transfer_buffer(VulkanRenderer* vulkan_renderer, VkBuffer buffer, VmaAllocation allocation, void* data, size_t data_size)
+void vulkan_shared_resources_transfer_buffer_task(ftl::TaskScheduler* /*task_scheduler*/, void* arg)
 {
+    VulkanResourceTransferBufferParams* params = reinterpret_cast<VulkanResourceTransferBufferParams*>(arg);
+
     VkMemoryPropertyFlags memory_property_flags;
-    vmaGetAllocationMemoryProperties(vulkan_renderer->vma_allocator, allocation, &memory_property_flags);
+    vmaGetAllocationMemoryProperties(
+        params->vulkan_renderer->vma_allocator, 
+        params->allocation, &memory_property_flags);
 
     if (memory_property_flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
     {
         void* mapped_data;
-        VkResult result = vmaMapMemory(vulkan_renderer->vma_allocator, allocation, &mapped_data);
+        VkResult result = vmaMapMemory(params->vulkan_renderer->vma_allocator, params->allocation, &mapped_data);
+        VK_ASSERT(result);
         if (result != VK_SUCCESS)
         {
-            return false;
+            delete params;
+            return;
         }
-        memcpy(mapped_data, data, data_size);
+
+        memcpy(mapped_data, params->data, params->data_size);
         if (!(memory_property_flags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
         {
-            vmaFlushAllocation(vulkan_renderer->vma_allocator, allocation, 0, VK_WHOLE_SIZE);
+            vmaFlushAllocation(params->vulkan_renderer->vma_allocator, params->allocation, 0, VK_WHOLE_SIZE);
         }
-        vmaUnmapMemory(vulkan_renderer->vma_allocator, allocation);
+        vmaUnmapMemory(params->vulkan_renderer->vma_allocator, params->allocation);
+
+        params->vulkan_mesh_resource->resource_loaded_count.fetch_add(1);
+
+        delete params;
     }
     else
     {
-        VkBufferCreateInfo buffer_create_info;
-        buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        buffer_create_info.pNext = nullptr;
-        buffer_create_info.flags = 0;
-        buffer_create_info.size = static_cast<VkDeviceSize>(data_size);
-        buffer_create_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-        buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        buffer_create_info.queueFamilyIndexCount = 0;
-        buffer_create_info.pQueueFamilyIndices = nullptr;
-
-        VmaAllocationCreateInfo allocation_create_info;
-        allocation_create_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
-        allocation_create_info.usage = VMA_MEMORY_USAGE_CPU_ONLY;
-        allocation_create_info.requiredFlags = 0;
-        allocation_create_info.preferredFlags = 0;
-        allocation_create_info.memoryTypeBits = 0;
-        allocation_create_info.pool = VK_NULL_HANDLE;
-        allocation_create_info.pUserData = nullptr;
-        allocation_create_info.priority = 0.0f;
-
-        VkBuffer staging_buffer;
-        VmaAllocation staging_allocation;
-        VmaAllocationInfo staging_allocation_info;
-        VkResult result = vmaCreateBuffer(vulkan_renderer->vma_allocator, &buffer_create_info, &allocation_create_info, &staging_buffer, &staging_allocation, &staging_allocation_info);
-        if (result != VK_SUCCESS)
-        {
-            return false;
-        }
-
-        memcpy(staging_allocation_info.pMappedData, data, data_size);
-        VK_ASSERT(vmaFlushAllocation(vulkan_renderer->vma_allocator, staging_allocation, 0, VK_WHOLE_SIZE));
-
-        VK_ASSERT(vkWaitForFences(vulkan_renderer->device, 1, &vulkan_renderer->transfer_fence, VK_TRUE, UINT64_MAX));
-
-        VK_ASSERT(vkResetFences(vulkan_renderer->device, 1, &vulkan_renderer->transfer_fence));
-        VK_ASSERT(vkResetCommandPool(vulkan_renderer->device, vulkan_renderer->transfer_command_pool, 0));
-
-        VkCommandBufferBeginInfo command_buffer_begin_info;
-        command_buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        command_buffer_begin_info.pNext = nullptr;
-        command_buffer_begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        command_buffer_begin_info.pInheritanceInfo = nullptr;
-        VK_ASSERT(vkBeginCommandBuffer(vulkan_renderer->transfer_command_buffer, &command_buffer_begin_info));
-
-        VkBufferCopy buffer_copy;
-        buffer_copy.srcOffset = 0;
-        buffer_copy.dstOffset = 0;
-        buffer_copy.size = static_cast<VkDeviceSize>(data_size);
-        vkCmdCopyBuffer(vulkan_renderer->transfer_command_buffer, staging_buffer, buffer, 1, &buffer_copy);
-
-        VK_ASSERT(vkEndCommandBuffer(vulkan_renderer->transfer_command_buffer));
-
-        VkSubmitInfo submit_info;
-        submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submit_info.pNext = nullptr;
-        submit_info.waitSemaphoreCount = 0;
-        submit_info.pWaitSemaphores = nullptr;
-        submit_info.pWaitDstStageMask = nullptr;
-        submit_info.commandBufferCount = 1;
-        submit_info.pCommandBuffers = &vulkan_renderer->transfer_command_buffer;
-        submit_info.signalSemaphoreCount = 0;
-        submit_info.pSignalSemaphores = nullptr;
-
-        VK_ASSERT(vkQueueSubmit(vulkan_renderer->graphics_queue, 1, &submit_info, vulkan_renderer->transfer_fence));
-
-        VK_ASSERT(vkWaitForFences(vulkan_renderer->device, 1, &vulkan_renderer->transfer_fence, VK_TRUE, UINT64_MAX));
-
-        vmaDestroyBuffer(vulkan_renderer->vma_allocator, staging_buffer, staging_allocation);
+        vulkan_shared_resources_add_transfer_buffer_params(params);
     }
-
-    return true;
 }
 
-bool vulkan_shared_resources_init_mesh_resource_with_geometry(Geometry* geometry, VulkanRenderer* vulkan_renderer, VulkanMeshResource* out_vulkan_mesh_resource)
+struct CopyGeometryToGpuParams
 {
-    if (geometry == nullptr)
+    Geometry* geometry = nullptr;
+    VulkanRenderer* vulkan_renderer = nullptr;
+    VulkanMeshResource* vulkan_mesh_resource = nullptr;
+};
+
+void vulkan_shared_resources_copy_geometry_to_gpu_task(ftl::TaskScheduler* task_scheduler, void* arg)
+{
+    CopyGeometryToGpuParams* params = reinterpret_cast<CopyGeometryToGpuParams*>(arg);
+
+    SDL_assert(params->geometry);
+    if (params->geometry == nullptr)
     {
+        delete params;
         SDL_assert(false);
-        return false;
+        return;
     }
 
-    VkDeviceSize vertex_total_size = sizeof(Vertex) * geometry->vertex_count;
+    VkDeviceSize vertex_total_size = sizeof(Vertex) * params->geometry->vertex_count;
 
     VkBufferCreateInfo vertex_buffer_create_info;
     vertex_buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -278,27 +232,27 @@ bool vulkan_shared_resources_init_mesh_resource_with_geometry(Geometry* geometry
     vertex_allocation_create_info.pUserData = nullptr;
     vertex_allocation_create_info.priority = 0.0f;
 
-    VkResult result = vmaCreateBuffer(vulkan_renderer->vma_allocator, &vertex_buffer_create_info, &vertex_allocation_create_info,
-        &out_vulkan_mesh_resource->vertex_buffer, &out_vulkan_mesh_resource->vertex_allocation, nullptr);
+    VkResult result = vmaCreateBuffer(params->vulkan_renderer->vma_allocator, &vertex_buffer_create_info, &vertex_allocation_create_info,
+        &params->vulkan_mesh_resource->vertex_buffer, &params->vulkan_mesh_resource->vertex_allocation, nullptr);
 
-    if (result != VK_SUCCESS)
+    VK_ASSERT(result);
+    if (result == VK_SUCCESS)
     {
-        return false;
+        VulkanResourceTransferBufferParams* vertex_transfer_buffer_params = new VulkanResourceTransferBufferParams();
+        vertex_transfer_buffer_params->vulkan_renderer = params->vulkan_renderer;
+        vertex_transfer_buffer_params->buffer = params->vulkan_mesh_resource->vertex_buffer;
+        vertex_transfer_buffer_params->allocation = params->vulkan_mesh_resource->vertex_allocation;
+        vertex_transfer_buffer_params->data = geometry_get_vertex(params->geometry);
+        vertex_transfer_buffer_params->data_size = static_cast<size_t>(vertex_total_size);
+        vertex_transfer_buffer_params->vulkan_mesh_resource = params->vulkan_mesh_resource;
+
+        ftl::Task task = { vulkan_shared_resources_transfer_buffer_task, vertex_transfer_buffer_params };
+        task_scheduler->AddTask(task, ftl::TaskPriority::Normal);
     }
 
-    if (!vulkan_shared_resources_transfer_buffer(
-        vulkan_renderer,
-        out_vulkan_mesh_resource->vertex_buffer,
-        out_vulkan_mesh_resource->vertex_allocation,
-        geometry_get_vertex(geometry),
-        static_cast<size_t>(vertex_total_size)))
-    {
-        return false;
-    }
+    VkDeviceSize index_total_size = sizeof(uint32_t) * params->geometry->index_count;
 
-    VkDeviceSize index_total_size = sizeof(uint32_t) * geometry->index_count;
-
-    out_vulkan_mesh_resource->index_count = static_cast<uint32_t>(geometry->index_count);
+    params->vulkan_mesh_resource->index_count = static_cast<uint32_t>(params->geometry->index_count);
 
     VkBufferCreateInfo index_buffer_create_info;
     index_buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -320,25 +274,25 @@ bool vulkan_shared_resources_init_mesh_resource_with_geometry(Geometry* geometry
     index_allocation_create_info.pUserData = nullptr;
     index_allocation_create_info.priority = 0.0f;
 
-    result = vmaCreateBuffer(vulkan_renderer->vma_allocator, &index_buffer_create_info, &index_allocation_create_info,
-        &out_vulkan_mesh_resource->index_buffer, &out_vulkan_mesh_resource->index_allocation, nullptr);
+    result = vmaCreateBuffer(params->vulkan_renderer->vma_allocator, &index_buffer_create_info, &index_allocation_create_info,
+        &params->vulkan_mesh_resource->index_buffer, &params->vulkan_mesh_resource->index_allocation, nullptr);
 
-    if (result != VK_SUCCESS)
+    VK_ASSERT(result);
+    if (result == VK_SUCCESS)
     {
-        return false;
-    }
+        VulkanResourceTransferBufferParams* vertex_transfer_buffer_params = new VulkanResourceTransferBufferParams();
+        vertex_transfer_buffer_params->vulkan_renderer = params->vulkan_renderer;
+        vertex_transfer_buffer_params->buffer = params->vulkan_mesh_resource->index_buffer;
+        vertex_transfer_buffer_params->allocation = params->vulkan_mesh_resource->index_allocation;
+        vertex_transfer_buffer_params->data = geometry_get_index(params->geometry);
+        vertex_transfer_buffer_params->data_size = static_cast<size_t>(index_total_size);
+        vertex_transfer_buffer_params->vulkan_mesh_resource = params->vulkan_mesh_resource;
 
-    if (!vulkan_shared_resources_transfer_buffer(
-        vulkan_renderer,
-        out_vulkan_mesh_resource->index_buffer,
-        out_vulkan_mesh_resource->index_allocation,
-        geometry_get_index(geometry),
-        static_cast<size_t>(index_total_size)))
-    {
-        return false;
+        ftl::Task task = { vulkan_shared_resources_transfer_buffer_task, vertex_transfer_buffer_params };
+        task_scheduler->AddTask(task, ftl::TaskPriority::Normal);
     }
-
-    return true;
+    
+    delete params;
 }
 
 struct InitMeshResourcesParams
@@ -347,23 +301,18 @@ struct InitMeshResourcesParams
     VulkanRenderer* vulkan_renderer = nullptr;
 };
 
-void vulkan_shared_resources_load_cube_geometry_task(ftl::TaskScheduler* /*task_scheduler*/, void* arg)
+void vulkan_shared_resources_load_cube_geometry_task(ftl::TaskScheduler* task_scheduler, void* arg)
 {
     InitMeshResourcesParams* params = reinterpret_cast<InitMeshResourcesParams*>(arg);
 
-    constexpr VulkanMeshType cube_type = VulkanMeshType::Cube;
-    VulkanMeshResource* vulkan_mesh_resource = 
-        &params->vulkan_shared_resources->mesh_resources[static_cast<size_t>(cube_type)];
+    CopyGeometryToGpuParams* copy_geometry_to_gpu_params = new CopyGeometryToGpuParams();
+    copy_geometry_to_gpu_params->geometry = geometry_loader_load_cube();
+    copy_geometry_to_gpu_params->vulkan_renderer = params->vulkan_renderer;
+    copy_geometry_to_gpu_params->vulkan_mesh_resource = 
+        &params->vulkan_shared_resources->mesh_resources[static_cast<size_t>(VulkanMeshType::Cube)];
 
-    Geometry* geometry = geometry_loader_load_cube();
-    if (!vulkan_shared_resources_init_mesh_resource_with_geometry(
-            geometry, params->vulkan_renderer, vulkan_mesh_resource))
-    {
-        SDL_assert(false);
-        return;
-    }
-
-    vulkan_mesh_resource->resource_loaded.store(true, std::memory_order_release);
+    ftl::Task task = { vulkan_shared_resources_copy_geometry_to_gpu_task, copy_geometry_to_gpu_params };
+    task_scheduler->AddTask(task, ftl::TaskPriority::Normal);
 }
 
 void vulkan_shared_resources_init_mesh_resources_task(ftl::TaskScheduler* task_scheduler, void* arg)
@@ -387,6 +336,10 @@ void vulkan_shared_resources_init_task(ftl::TaskScheduler* task_scheduler, void*
     VulkanSharedResourcesInitParams* params = reinterpret_cast<VulkanSharedResourcesInitParams*>(arg);
     params->vulkan_shared_resources = new VulkanSharedResources();
 
+    ftl::Task init_worker_thread_task = { vulkan_shared_resources_init_worker_thread_task, params->vulkan_renderer };
+    ftl::WaitGroup wait_group(task_scheduler);
+    task_scheduler->AddTask(init_worker_thread_task, ftl::TaskPriority::High, &wait_group);
+
     if (!vulkan_shared_resources_init_samplers(params->vulkan_shared_resources, params->vulkan_renderer))
     {
         params->init_successful = false;
@@ -404,7 +357,7 @@ void vulkan_shared_resources_init_task(ftl::TaskScheduler* task_scheduler, void*
     {
         VulkanMeshResource& vulkan_mesh_resource = params->vulkan_shared_resources->mesh_resources[i];
 
-        vulkan_mesh_resource.resource_loaded.store(false, std::memory_order_release);
+        vulkan_mesh_resource.resource_loaded_count.store(0, std::memory_order_release);
         vulkan_mesh_resource.vertex_buffer = VK_NULL_HANDLE;
         vulkan_mesh_resource.vertex_allocation = VK_NULL_HANDLE;
         vulkan_mesh_resource.index_buffer = VK_NULL_HANDLE;
@@ -417,6 +370,9 @@ void vulkan_shared_resources_init_task(ftl::TaskScheduler* task_scheduler, void*
     init_mesh_resources_params->vulkan_shared_resources = params->vulkan_shared_resources;
 
     ftl::Task init_mesh_resources_task = { vulkan_shared_resources_init_mesh_resources_task, init_mesh_resources_params };
+
+    // worker thread task needs to be completed before we can trigger the resource loading tasks
+    wait_group.Wait();
 
     task_scheduler->AddTask(init_mesh_resources_task, ftl::TaskPriority::High);
 
@@ -451,10 +407,11 @@ VulkanMeshResource* vulkan_shared_resources_get_mesh(VulkanSharedResources* vulk
 
     VulkanMeshResource* vulkan_mesh_resource = &vulkan_shared_resources->mesh_resources[vulkan_mesh_type_index];
 
-    if (!vulkan_mesh_resource->resource_loaded.load(std::memory_order_release))
+    if (vulkan_mesh_resource->resource_loaded_count.load(std::memory_order_release) < 2)
     {
         return nullptr;
     }
 
     return &vulkan_shared_resources->mesh_resources[vulkan_mesh_type_index];
 }
+

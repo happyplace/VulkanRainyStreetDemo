@@ -46,9 +46,6 @@ struct VulkanRenderer
     VkFramebuffer* framebuffers = nullptr;
     VmaAllocator vma_allocator = VK_NULL_HANDLE;
     shaderc_compiler_t shaderc_compiler = nullptr;
-    VkCommandPool transfer_command_pool = VK_NULL_HANDLE;
-    VkCommandBuffer transfer_command_buffer = VK_NULL_HANDLE;
-    VkFence transfer_fence = VK_NULL_HANDLE;
 };
 
 VulkanRenderer* vulkan_renderer_init(struct GameWindow* game_window);

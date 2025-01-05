@@ -50,6 +50,8 @@ set(vrsd-src
     "src/VulkanSharedResources.cpp"
     "src/GeometryLoader.h"
     "src/GeometryLoader.cpp"
+    "src/VulkanSharedResourcesWorkerThread.h"
+    "src/VulkanSharedResourcesWorkerThread.cpp"
 )
 
 include_directories(SYSTEM "external/imgui-docking")

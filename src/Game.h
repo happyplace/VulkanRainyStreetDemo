@@ -32,6 +32,8 @@ struct GameInitParams
     GameWindow* game_window = nullptr;
 };
 
+Game* game_get_instance();
+
 void game_init_task(ftl::TaskScheduler* task_scheduler, void* arg);
 void game_destroy(Game* game);
 

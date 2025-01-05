@@ -6,6 +6,8 @@
 
 #include <vulkan/vulkan_core.h>
 
+#include "VulkanSharedResourcesWorkerThread.h"
+
 VK_DEFINE_HANDLE(VmaAllocation);
 
 namespace ftl { class TaskScheduler; }
@@ -14,7 +16,7 @@ struct VulkanRenderer;
 
 struct VulkanMeshResource
 {
-    std::atomic_bool resource_loaded = false;
+    std::atomic<uint8_t> resource_loaded_count = 0;
     VkBuffer vertex_buffer = VK_NULL_HANDLE;
     VmaAllocation vertex_allocation = VK_NULL_HANDLE;
     VkBuffer index_buffer = VK_NULL_HANDLE;
