@@ -29,10 +29,12 @@ struct VulkanRenderer
     VkPhysicalDevice physical_device = VK_NULL_HANDLE;
     uint32_t graphics_queue_index = 0;
     uint32_t compute_queue_index = 0;
+    uint32_t transfer_queue_index = 0;
     VkDeviceSize min_uniform_buffer_offset_alignment = 0;
     VkDevice device = VK_NULL_HANDLE;
     VkQueue graphics_queue = VK_NULL_HANDLE;
     VkQueue compute_queue = VK_NULL_HANDLE;
+    VkQueue transfer_queue = VK_NULL_HANDLE;
     uint32_t swapchain_image_count = 0;
     VkSwapchainKHR swapchain = VK_NULL_HANDLE;
     VkImageView* swapchain_image_views = nullptr;

@@ -23,6 +23,7 @@ struct VulkanSharedResourcesWorkerThreadData
     std::queue<VulkanResourceTransferBufferParams*> transfer_queue;
     // TODO: should be a spinning mutex to avoid sleeping worker threads
     std::mutex transfer_queue_lock;
+    std::mutex vulkan_queue_mutex;
 };
 
 constexpr int c_vulkan_shared_resources_worker_thread_count = 10;
@@ -46,7 +47,7 @@ void THREAD_vulkan_shared_resources_worker_thread(VulkanRenderer* vulkan_rendere
         command_pool_create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         command_pool_create_info.pNext = nullptr;
         command_pool_create_info.flags = 0;
-        command_pool_create_info.queueFamilyIndex = vulkan_renderer->graphics_queue_index;
+        command_pool_create_info.queueFamilyIndex = vulkan_renderer->transfer_queue_index;
         VK_ASSERT(vkCreateCommandPool(vulkan_renderer->device, &command_pool_create_info, nullptr, &command_pool));
 
         VkCommandBufferAllocateInfo command_buffer_allocate_info;
@@ -173,11 +174,14 @@ void THREAD_vulkan_shared_resources_worker_thread(VulkanRenderer* vulkan_rendere
             submit_info.signalSemaphoreCount = 0;
             submit_info.pSignalSemaphores = nullptr;
 
-            VK_ASSERT(vkQueueSubmit(
-                transfer_buffer_params->vulkan_renderer->graphics_queue, 
-                1, 
-                &submit_info, 
-                fence));
+            {
+                std::unique_lock queue_lock(s_worker_thread_data_instance->vulkan_queue_mutex);
+                VK_ASSERT(vkQueueSubmit(
+                    transfer_buffer_params->vulkan_renderer->transfer_queue, 
+                    1, 
+                    &submit_info, 
+                    fence));
+            }
 
             VK_ASSERT(vkWaitForFences(
                 transfer_buffer_params->vulkan_renderer->device, 

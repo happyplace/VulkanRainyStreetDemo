@@ -254,6 +254,7 @@ bool vulkan_renderer_init_device(VulkanRenderer* vulkan_renderer)
     int32_t compute_queue_index = -1;
     int8_t device_type_score = -1;
     VkPhysicalDevice physical_device = VK_NULL_HANDLE;
+    std::vector<int32_t> queues_supporting_transfer;
 
     for (uint32_t i = 0; i < physical_device_count; ++i)
     {
@@ -298,6 +299,11 @@ bool vulkan_renderer_init_device(VulkanRenderer* vulkan_renderer)
             {
                 compute_index = k;
             }
+
+            if (family_property.queueFlags & VK_QUEUE_TRANSFER_BIT)
+            {
+                queues_supporting_transfer.push_back(k);
+            }
         }
 
         if (graphics_index >= 0 && compute_index >= 0)
@@ -319,8 +325,25 @@ bool vulkan_renderer_init_device(VulkanRenderer* vulkan_renderer)
         return false;
     }
 
+    int32_t transfer_index = -1;
+    for (int32_t transfer_queue_index : queues_supporting_transfer)
+    {
+        if (transfer_queue_index != graphics_queue_index && transfer_queue_index != compute_queue_index)
+        {
+            transfer_index = transfer_queue_index;
+            break;
+        }
+    }
+
+    if (transfer_index <= -1)
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, 
+            "failed to find a separate transfer queue from graphics and compute");
+    }
+
     vulkan_renderer->graphics_queue_index = graphics_queue_index;
     vulkan_renderer->compute_queue_index = compute_queue_index;
+    vulkan_renderer->transfer_queue_index = transfer_index;
     vulkan_renderer->physical_device = physical_device;
 
     uint32_t device_extension_count = 0;
@@ -381,6 +404,17 @@ bool vulkan_renderer_init_device(VulkanRenderer* vulkan_renderer)
         float queue_priority = 1.0f;
         device_queue_create_info.pQueuePriorities = &queue_priority;
         device_queue_create_info.queueFamilyIndex = vulkan_renderer->compute_queue_index;
+    }
+
+    {
+        VkDeviceQueueCreateInfo& device_queue_create_info = queue_create_infos.emplace_back();
+        device_queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        device_queue_create_info.pNext = nullptr;
+        device_queue_create_info.flags = 0;
+        device_queue_create_info.queueCount = 1;
+        float queue_priority = 1.0f;
+        device_queue_create_info.pQueuePriorities = &queue_priority;
+        device_queue_create_info.queueFamilyIndex = vulkan_renderer->transfer_queue_index;
     }
 
     VkPhysicalDeviceFeatures physical_device_features;
@@ -454,11 +488,26 @@ bool vulkan_renderer_init_device(VulkanRenderer* vulkan_renderer)
 
     VK_ASSERT(vkCreateDevice(vulkan_renderer->physical_device, &device_create_info, s_allocator, &vulkan_renderer->device));
 
-    vkGetDeviceQueue(vulkan_renderer->device, vulkan_renderer->graphics_queue_index, 0, &vulkan_renderer->graphics_queue);
+    vkGetDeviceQueue(
+        vulkan_renderer->device, 
+        vulkan_renderer->graphics_queue_index, 
+        0, 
+        &vulkan_renderer->graphics_queue);
+
     if (vulkan_renderer->graphics_queue_index != vulkan_renderer->compute_queue_index)
     {
-        vkGetDeviceQueue(vulkan_renderer->device, vulkan_renderer->compute_queue_index, 0, &vulkan_renderer->compute_queue);
+        vkGetDeviceQueue(
+            vulkan_renderer->device, 
+            vulkan_renderer->compute_queue_index, 
+            0, 
+            &vulkan_renderer->compute_queue);
     }
+
+    vkGetDeviceQueue(
+        vulkan_renderer->device, 
+        vulkan_renderer->transfer_queue_index, 
+        0, 
+        &vulkan_renderer->transfer_queue);
 
     return true;
 }

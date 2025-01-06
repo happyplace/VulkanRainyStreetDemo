@@ -105,9 +105,6 @@ void game_frame_render_submit(FrameResource* frame_resource, Game* game)
     submit_info.signalSemaphoreCount = 1;
     submit_info.pSignalSemaphores = &frame_resource->release_image;
 
-    result = vkQueueSubmit(game->vulkan_renderer->graphics_queue, 1, &submit_info, frame_resource->submit_fence);
-    SDL_assert(result == VK_SUCCESS);
-
     VkPresentInfoKHR present_info;
     present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     present_info.pNext = nullptr;
@@ -118,7 +115,11 @@ void game_frame_render_submit(FrameResource* frame_resource, Game* game)
     present_info.pImageIndices = &frame_resource->swapchain_image_index;
     present_info.pResults = nullptr;
 
+    result = vkQueueSubmit(game->vulkan_renderer->graphics_queue, 1, &submit_info, frame_resource->submit_fence);
+    SDL_assert(result == VK_SUCCESS);
+
     result = vkQueuePresentKHR(game->vulkan_renderer->graphics_queue, &present_info);
+
     if (result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR)
     {
         game_window_set_window_flag(game->game_window, GameWindowFlag::ResizeRequested, true);
