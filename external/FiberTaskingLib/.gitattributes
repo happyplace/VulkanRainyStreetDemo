@@ -1,4 +1,0 @@
-# Shell scripts
-*.sh eol=lf
-*.py eol=lf
-tools/clang-tidy-checks.txt eol=lf

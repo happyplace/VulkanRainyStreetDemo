@@ -1,9 +1,5 @@
 # Rainy Street Demo
 
-## Feature Updates:
-- [x] Multiple frames in flight
-- [X] Fiber tasking library
-
 ## New Features:
  - [ ] Instancing
  - [ ] Shadow Mapping
@@ -25,15 +21,5 @@
 ## External Libraries:
 | Name | Path |
 | ------ | ------ |
-| DirectXMath | external/DirectXMath |
-| .NET Runtime (**sal.h**) | external/dotnet_runtime |
-| Dear ImGui | external/imgui-docking |
-| Vulkan Memory Allocator | external/VulkanMemoryAllocator |
-| Shaderc | external/shaderc |
-| KhronosGroup glslang | external/shaderc/third_party/glslang |
-| SPIR-V Tools | external/shaderc/third_party/spirv-tools |
-| SPIR-V Headers | external/shaderc/third_party/spirv-tools/external/spirv-headers |
 | SDL 2 | *(links against system library)* |
 | Vulkan | *(links against system library)* |
-| Fiber Tasking Lib | external/FiberTaskingLib |
-
