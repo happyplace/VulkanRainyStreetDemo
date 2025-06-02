@@ -116,3 +116,7 @@ imgui.ini
 # vim related files
 compile_commands.json
 .nvim
+
+# jai
+.build
+rainy_street
