@@ -1,5 +1,8 @@
 # Rainy Street Demo
 
+## Updates Features:
+ - [ ] Port to Jai
+
 ## New Features:
  - [ ] Instancing
  - [ ] Shadow Mapping
@@ -21,5 +24,5 @@
 ## External Libraries:
 | Name | Path |
 | ------ | ------ |
-| SDL 2 | *(links against system library)* |
 | Vulkan | *(links against system library)* |
+
