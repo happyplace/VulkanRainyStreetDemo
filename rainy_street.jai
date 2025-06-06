@@ -3,6 +3,8 @@
 #import "Vulkan";
 #import "Window_Creation";
 
+VULKAN_DEBUG :: true;
+
 main :: () {
     width : u32 = 1280;
     height : u32 = 720;
@@ -10,10 +12,8 @@ main :: () {
     window := create_window(xx width, xx height, "Vulkan Rainy Street Demo");
 
     defer deinit_vulkan();
-    if !init_vulkan() {
-        print("failed to init vulkan\n");
+    if !init_vulkan()
         return;
-    }
 
     quit := false;
     while !quit {
@@ -26,6 +26,9 @@ main :: () {
 }
 
 instance : VkInstance;
+#if VULKAN_DEBUG {
+    debug_report_callback : VkDebugReportCallbackEXT;
+}
 
 init_vulkan :: () -> bool {
     result : VkResult = .ERROR_INITIALIZATION_FAILED;
@@ -38,11 +41,17 @@ init_vulkan :: () -> bool {
     // init_vma_allocator
     // init_shaderc_compiler
 
-    extensions: [2] *u8;
-    extensions[0] = VK_KHR_SURFACE_EXTENSION_NAME.data;
-    extensions[1] = "VK_KHR_xcb_surface";
+    extensions: [..] *u8;
+    array_add(*extensions, VK_KHR_SURFACE_EXTENSION_NAME.data);
+    array_add(*extensions, "VK_KHR_xcb_surface");
 
     layers: [..] *u8;
+
+    #if VULKAN_DEBUG {
+        array_add(*extensions, VK_EXT_DEBUG_REPORT_EXTENSION_NAME.data);
+
+        array_add(*layers, "VK_LAYER_KHRONOS_validation");
+    }
 
     extension_property_count : u32 = 0;
     vkEnumerateInstanceExtensionProperties(null, *extension_property_count, null);
@@ -99,18 +108,58 @@ init_vulkan :: () -> bool {
     instance_create_info.pApplicationInfo = *application_info;
     instance_create_info.enabledLayerCount = xx layers.count;
     instance_create_info.ppEnabledLayerNames = layers.data;
-    instance_create_info.enabledExtensionCount = extensions.count;
+    instance_create_info.enabledExtensionCount = xx extensions.count;
     instance_create_info.ppEnabledExtensionNames = extensions.data;
 
     result = vkCreateInstance(*instance_create_info, null, *instance);
     if result != .SUCCESS {
+        print("vkCreateInstance failed: %\n", result);
         return false;
+    }
+
+    #if VULKAN_DEBUG {
+        vkCreateDebugReportCallbackEXT : PFN_vkCreateDebugReportCallbackEXT;
+        vkCreateDebugReportCallbackEXT = xx vkGetInstanceProcAddr(instance, "vkCreateDebugReportCallbackEXT");
+
+        report_callback_create_info: VkDebugReportCallbackCreateInfoEXT;
+        report_callback_create_info.flags |= .INFORMATION_BIT_EXT;
+        report_callback_create_info.flags |= .WARNING_BIT_EXT;
+        report_callback_create_info.flags |= .ERROR_BIT_EXT;
+        report_callback_create_info.flags |= .PERFORMANCE_WARNING_BIT_EXT;
+        report_callback_create_info.flags |= .DEBUG_BIT_EXT;
+        report_callback_create_info.pfnCallback = vulkan_debug_callback;
+
+        result = vkCreateDebugReportCallbackEXT(instance, *report_callback_create_info, null, *debug_report_callback);
+        if result != .SUCCESS {
+            print("vkCreateDebugReportCallbackEXT failed: %\n", result);
+            return false;
+        }
     }
 
     return true;
 }
 
 deinit_vulkan :: () {
-    vkDestroyInstance(instance, null);
+    #if VULKAN_DEBUG {
+        if debug_report_callback {
+            vkDestroyDebugReportCallbackEXT : PFN_vkDestroyDebugReportCallbackEXT;
+            vkDestroyDebugReportCallbackEXT = xx vkGetInstanceProcAddr(instance, "vkDestroyDebugReportCallbackEXT");
+
+            vkDestroyDebugReportCallbackEXT(instance, debug_report_callback, null);
+        }
+    }
+
+    if instance
+        vkDestroyInstance(instance, null);
 }
 
+#if VULKAN_DEBUG {
+    vulkan_debug_callback :: (flags: VkDebugReportFlagsEXT, objType: VkDebugReportObjectTypeEXT, obj: u64,
+                              location: u64, code: s32, layerPrefix: *u8, msg: *u8,
+                              userData: *void) -> VkBool32 #c_call {
+        push_context {
+            print("VULKAN VALIDATION: %\n", msg);
+        }
+        return VK_FALSE;
+    }
+}
