@@ -95,6 +95,21 @@ init_vulkan :: () -> bool {
     defer free(instance_properties.data);
     vkEnumerateInstanceLayerProperties(*instance_property_count, instance_properties.data);
 
+    for layers {
+        str_layer_name := to_string(it, strlen(it));
+        supported := false;
+        for k: 0..instance_property_count-1 {
+            if str_layer_name == to_string(instance_properties[k].layerName.data) {
+                supported = true;
+                break;
+            }
+        }
+        if !supported {
+            print("\"%\" layer not supported\n", str_layer_name);
+            return false;
+        }
+    }
+
     application_info : VkApplicationInfo;
     application_info.sType = .APPLICATION_INFO;
     application_info.pApplicationName = "Vulkan Rainy Street Demo";
