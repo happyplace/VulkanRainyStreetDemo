@@ -1,46 +1,43 @@
 #import "Basic";
 #import "Input";
 #import "Vulkan";
-#import "Window_Creation";
 
 #if OS == .LINUX {
-    #import "X11";
+    #import "SDL";
 
-    libX11 :: #library,system "libX11";
-
-    xcb_connection_t :: struct {}
-    xcb_window_t :: struct {}
-    VkXcbSurfaceCreateFlagsKHR :: VkFlags;
-    VkXcbSurfaceCreateInfoKHR :: struct {
-        sType:      VkStructureType = .XCB_SURFACE_CREATE_INFO_KHR;
-        pNext:      *void;
-        flags:      VkXcbSurfaceCreateFlagsKHR;
-        connection: *xcb_connection_t;
-        window:     xcb_window_t;
-    }
-
-    PFN_vkCreateXcbSurfaceKHR :: #type (instance: VkInstance, pCreateInfo: *VkXcbSurfaceCreateInfoKHR,
-        pAllocator: *VkAllocationCallbacks, pSurface: *VkSurfaceKHR) -> VkResult #foreign libvulkan;
-
-    Display :: struct {}
-    XGetXCBConnection :: (display: *Display) -> *xcb_connection_t #foreign libX11;
+    SDL_Vulkan_GetInstanceExtensions :: (window: *SDL_Window, pCount: *u32, pNames: **u8) -> SDL_bool #foreign SDL2;
+    SDL_Vulkan_CreateSurface :: (window: *SDL_Window, instance: VkInstance, surface: *VkSurfaceKHR) -> SDL_bool #foreign SDL2;
 }
 
 VULKAN_DEBUG :: true;
 
+window : *void;
+
 VulkanObjects :: struct {
     instance : VkInstance;
+    surface: VkSurfaceKHR;
     #if VULKAN_DEBUG {
         debug_report_callback : VkDebugReportCallbackEXT;
     }
 }
 
 main :: () {
-    width : u32 = 1280;
-    height : u32 = 720;
+    width : s32 = 1280;
+    height : s32 = 720;
 
-    window := create_window(xx width, xx height, "Vulkan Rainy Street Demo");
-    print("%\n", type_of(window));
+    if SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) < 0 {
+        print("failed to init SDL: %\n", to_string(SDL_GetError()));
+        return;
+    }
+    defer SDL_Quit();
+
+    window = SDL_CreateWindow("Vulkan Rainy Street Demo", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+        width, height, SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+    if window == null {
+        print("failed to create SDL window: %\n", to_string(SDL_GetError()));
+        return;
+    }
+    defer SDL_DestroyWindow(window);
 
     vulkan_objects: VulkanObjects;
     success := false;
@@ -52,10 +49,14 @@ main :: () {
 
     quit := false;
     while !quit {
-        update_window_events();
-
-        for events_this_frame {
-            if it.type == .QUIT then quit = true;
+        event : SDL_Event;
+        while SDL_PollEvent(*event) {
+            if event.type == {
+                case SDL_QUIT;
+                    quit = true;
+                case SDL_KEYUP;
+                    if event.key.keysym.sym == SDLK_ESCAPE quit = true;
+            }
         }
     }
 }
@@ -72,10 +73,16 @@ init_vulkan :: () -> bool, VulkanObjects {
     // init_shaderc_compiler
 
     extensions : [..] *u8;
-    array_add(*extensions, VK_KHR_SURFACE_EXTENSION_NAME.data);
     #if OS == .LINUX {
-        array_add(*extensions, "VK_KHR_xcb_surface");
-        // wayland - VK_KHR_wayland_surface
+        extension_count : u32;
+        SDL_Vulkan_GetInstanceExtensions(window, *extension_count, null);
+        required_extensions := NewArray(extension_count, *u8);
+        defer free(required_extensions.data);
+        SDL_Vulkan_GetInstanceExtensions(window, *extension_count, required_extensions.data);
+
+        for required_extensions {
+            array_add(*extensions, it);
+        }
     }
     else
         #assert(false);
@@ -189,32 +196,12 @@ init_vulkan :: () -> bool, VulkanObjects {
     }
 
     #if OS == .LINUX {
-        if !x_global_display {
-            print("x_global_display is null but the window should be created by now\n");
-            return false, vulkan_objects;
+        if !SDL_Vulkan_CreateSurface(window, vulkan_objects.instance, *vulkan_objects.surface) {
+            print("failed to create SDL surface: %\n", to_string(SDL_GetError()));
         }
-
-        vkCreateXcbSurfaceKHR : PFN_vkCreateXcbSurfaceKHR;
-        vkCreateXcbSurfaceKHR = xx vkGetInstanceProcAddr(vulkan_objects.instance,
-            "vkCreateXcbSurfaceKHR");
-
-        surface_create_info : VkXcbSurfaceCreateInfoKHR;
-        surface_create_info.connection = XGetXCBConnection(x_global_display);
-        //surface_create_info.window = xx window;
-
-        /*
-            VkXcbSurfaceCreateInfoKHR :: struct {
-        sType:      VkStructureType = .XCB_SURFACE_CREATE_INFO_KHR;
-        pNext:      *void;
-        flags:      VkXcbSurfaceCreateFlagsKHR;
-        connection: *xcb_connection_t;
-        window:     xcb_window_t;
-        }
-        */
     }
-    else {
+    else
         #assert(false);
-    }
 
     physical_device_count : u32 = 0;
     vkEnumeratePhysicalDevices(vulkan_objects.instance, *physical_device_count, null);
@@ -272,6 +259,9 @@ deinit_vulkan :: (vulkan_objects: VulkanObjects) {
             vkDestroyDebugReportCallbackEXT(vulkan_objects.instance, vulkan_objects.debug_report_callback, null);
         }
     }
+
+    if vulkan_objects.surface
+        vkDestroySurfaceKHR(vulkan_objects.instance, vulkan_objects.surface, null);
 
     if vulkan_objects.instance
         vkDestroyInstance(vulkan_objects.instance, null);
