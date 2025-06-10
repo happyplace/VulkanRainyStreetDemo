@@ -28,6 +28,9 @@ VulkanObjects :: struct {
     swap_chain_width : u32;
     swap_chain_height : u32;
     swap_chain_format : VkFormat;
+    depth_stencil_image : VkImage;
+    depth_stencil_image_memory : VkDeviceMemory;
+    depth_stencil_image_view : VkImageView;
     #if VULKAN_DEBUG {
         debug_report_callback : VkDebugReportCallbackEXT;
     }
@@ -77,7 +80,6 @@ init_vulkan :: () -> bool, VulkanObjects {
     result : VkResult = .ERROR_INITIALIZATION_FAILED;
     vulkan_objects : VulkanObjects;
 
-    // init_depth_stencil
     // init_render_pass
     // init_frame_buffers
     // init_vma_allocator
@@ -362,6 +364,9 @@ init_vulkan :: () -> bool, VulkanObjects {
     if !init_vulkan_swap_chain(*vulkan_objects)
         return false, vulkan_objects;
 
+    if !init_vulkan_depth_stencil(*vulkan_objects)
+        return false, vulkan_objects;
+
     return true, vulkan_objects;
 }
 
@@ -496,15 +501,96 @@ init_vulkan_swap_chain :: (vulkan_objects: *VulkanObjects) -> bool {
         }
     }
 
+    return true;
+}
+
+vulkan_find_memory_by_flag_and_type :: (vulkan_objects : VulkanObjects, 
+                                        memory_property_flag_bits : VkMemoryPropertyFlagBits, 
+                                        memory_type_bits : u32) -> bool, u32 {
+    memory_properties : VkPhysicalDeviceMemoryProperties;
+    vkGetPhysicalDeviceMemoryProperties(vulkan_objects.physical_device, *memory_properties);
+
+    for i : 0..memory_properties.memoryTypeCount-1 {
+        if (memory_type_bits & (1<<i)) != 0 {
+            if (memory_properties.memoryTypes[i].propertyFlags & memory_property_flag_bits) != 0
+                return true, i;
+        }
+    }
+
+    return false, 0;
+}
+
+init_vulkan_depth_stencil :: (vulkan_objects : *VulkanObjects) -> bool {
+    result : VkResult = .ERROR_INITIALIZATION_FAILED;
+
     image_create_info : VkImageCreateInfo;
     image_create_info.imageType = ._2D;
     image_create_info.format = .D32_SFLOAT_S8_UINT;
     image_create_info.extent.width = vulkan_objects.swap_chain_width;
-    image_create_info.extent.height = vulkan_objects.swap_chain
+    image_create_info.extent.height = vulkan_objects.swap_chain_height;
+    image_create_info.extent.depth = 1;
+    image_create_info.mipLevels = 1;
+    image_create_info.arrayLayers = 1;
+    image_create_info.samples = ._1_BIT;
+    image_create_info.tiling = .OPTIMAL;
+    image_create_info.usage = .DEPTH_STENCIL_ATTACHMENT_BIT | .TRANSFER_DST_BIT;
+    image_create_info.sharingMode = .EXCLUSIVE;
+    image_create_info.initialLayout = .UNDEFINED;
+
+    result = vkCreateImage(vulkan_objects.device, *image_create_info, null, *vulkan_objects.depth_stencil_image);
+    if result != .SUCCESS {
+        print("vkCreateImage failed for depth stencil buffer: %\n", result);
+        return false;
+    }
+
+    memory_requirements : VkMemoryRequirements;
+    vkGetImageMemoryRequirements(vulkan_objects.device, vulkan_objects.depth_stencil_image, *memory_requirements);
+
+    memory_allocate_info : VkMemoryAllocateInfo;
+    memory_allocate_info.allocationSize = memory_requirements.size;
+    success, memoryTypeIndex := vulkan_find_memory_by_flag_and_type(vulkan_objects, .DEVICE_LOCAL_BIT, 
+        memory_requirements.memoryTypeBits);
+    if !success {
+        print("failed to find memory for depth stencil\n");
+        return false;
+    }
+
+    result = vkAllocateMemory(vulkan_objects.device, *memory_allocate_info, null, 
+        *vulkan_objects.depth_stencil_image_memory);
+    if result != .SUCCESS {
+        print("vkAllocateMemory failed for depth stencil\n");
+        return false;
+    }
+
+    result = vkBindImageMemory(vulkan_objects.device, vulkan_objects.depth_stencil_image, 
+        vulkan_objects.depth_stencil_image_memory, 0);
+    if result != .SUCCESS {
+        print("vkBindImageMemory failed for depth stencil\n");
+        return false;
+    }
+
+    image_view_create_info : VkImageViewCreateInfo;
+    image_view_create_info.image = vulkan_objects.depth_stencil_image;
+    image_view_create_info.viewType = ._2D;
+    image_view_create_info.format = image_create_info.format;
+    image_view_create_info.components.r = .IDENTITY;
+    image_view_create_info.components.g = .IDENTITY;
+    image_view_create_info.components.b = .IDENTITY;
+    image_view_create_info.components.a = .IDENTITY;
+    image_view_create_info.subresourceRange.aspectMask = .DEPTH_BIT;
+    image_view_create_info.subresourceRange.baseMipLevel = 0;
+    image_view_create_info.subresourceRange.levelCount = 1;
+    image_view_create_info.subresourceRange.baseArrayLayer = 0;
+    image_view_create_info.subresourceRange.layerCount = 1;
+
+    result = vkCreateImageView(vulkan_objects.device, *image_view_create_info, null, 
+        *vulkan_objects.depth_stencil_image_view);
+    if result != .SUCCESS {
+        print("vkCreateImageView failed for depth stencil\n");
+        return false;
+    }
 
     return true;
-}
-
 }
 
 deinit_vulkan :: (vulkan_objects: VulkanObjects) {
@@ -517,6 +603,8 @@ deinit_vulkan :: (vulkan_objects: VulkanObjects) {
             vkDestroyDebugReportCallbackEXT(vulkan_objects.instance, vulkan_objects.debug_report_callback, null);
         }
     }
+
+    deinit_vulkan_depth_stencil(vulkan_objects);
 
     deinit_vulkan_swap_chain_images(vulkan_objects);
 
@@ -539,6 +627,17 @@ deinit_vulkan_swap_chain_images :: (vulkan_objects : VulkanObjects) {
             vkDestroyImageView(vulkan_objects.device, it, null);
     }
     free(vulkan_objects.swap_chain_image_views.data);
+}
+
+deinit_vulkan_depth_stencil :: (vulkan_objects : VulkanObjects) {
+    if vulkan_objects.depth_stencil_image_view
+        vkDestroyImageView(vulkan_objects.device, vulkan_objects.depth_stencil_image_view, null);
+
+    if vulkan_objects.depth_stencil_image
+        vkDestroyImage(vulkan_objects.device, vulkan_objects.depth_stencil_image, null);
+
+    if vulkan_objects.depth_stencil_image_memory
+        vkFreeMemory(vulkan_objects.device, vulkan_objects.depth_stencil_image_memory, null);
 }
 
 #if VULKAN_DEBUG {
