@@ -7,6 +7,7 @@
 
     SDL_Vulkan_GetInstanceExtensions :: (window: *SDL_Window, pCount: *u32, pNames: **u8) -> SDL_bool #foreign SDL2;
     SDL_Vulkan_CreateSurface :: (window: *SDL_Window, instance: VkInstance, surface: *VkSurfaceKHR) -> SDL_bool #foreign SDL2;
+    SDL_Vulkan_GetDrawableSize :: (window: *SDL_Window, w: *u32, h: *u32) #foreign SDL2;
 }
 
 VULKAN_DEBUG :: true;
@@ -21,6 +22,12 @@ VulkanObjects :: struct {
     compute_queue_index: u32;
     transfer_queue_index: u32;
     device : VkDevice;
+    swap_chain_image_count : u32;
+    swap_chain : VkSwapchainKHR;
+    swap_chain_image_views : [] VkImageView;
+    swap_chain_width : u32;
+    swap_chain_height : u32;
+    swap_chain_format : VkFormat;
     #if VULKAN_DEBUG {
         debug_report_callback : VkDebugReportCallbackEXT;
     }
@@ -70,7 +77,6 @@ init_vulkan :: () -> bool, VulkanObjects {
     result : VkResult = .ERROR_INITIALIZATION_FAILED;
     vulkan_objects : VulkanObjects;
 
-    // init_swapchain
     // init_depth_stencil
     // init_render_pass
     // init_frame_buffers
@@ -353,8 +359,17 @@ init_vulkan :: () -> bool, VulkanObjects {
         return false, vulkan_objects;
     }
 
+    if !init_vulkan_swap_chain(*vulkan_objects)
+        return false, vulkan_objects;
+
+    return true, vulkan_objects;
+}
+
+init_vulkan_swap_chain :: (vulkan_objects: *VulkanObjects) -> bool {
+    result : VkResult = .ERROR_INITIALIZATION_FAILED;
+
     surface_format_count : u32;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(vulkan_objects.physical_device, vulkan_objects.surface, 
+    vkGetPhysicalDeviceSurfaceFormatsKHR(vulkan_objects.physical_device, vulkan_objects.surface,
         *surface_format_count, null);
     surface_formats := NewArray(surface_format_count, VkSurfaceFormatKHR);
     defer free(surface_formats.data);
@@ -366,7 +381,130 @@ init_vulkan :: () -> bool, VulkanObjects {
     preferred_surface_formats[1] = .B8G8R8A8_SRGB;
     preferred_surface_formats[2] = .A8B8G8R8_SRGB_PACK32;
 
-    return true, vulkan_objects;
+    found_format := false;
+    selected_surface_format : VkSurfaceFormatKHR;
+    for format : preferred_surface_formats {
+        for surface_formats {
+            if format == it.format {
+                found_format = true;
+                selected_surface_format = it;
+            }
+        }
+    }
+
+    if !found_format {
+        print("WARNING: no preferred surface format found, using first available format\n");
+        selected_surface_format = surface_formats[0];
+    }
+
+    surface_capabilities : VkSurfaceCapabilitiesKHR;
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vulkan_objects.physical_device, vulkan_objects.surface,
+        *surface_capabilities);
+
+    swap_chain_size : VkExtent2D;
+    if surface_capabilities.currentExtent.width == 0xffffffff {
+        window_width : u32;
+        window_height : u32;
+        SDL_Vulkan_GetDrawableSize(window, *window_width, *window_height);
+
+        swap_chain_size.width = window_width;
+        swap_chain_size.height = window_height;
+    }
+    else {
+        swap_chain_size = surface_capabilities.currentExtent;
+    }
+
+    vulkan_objects.swap_chain_image_count = surface_capabilities.minImageCount;
+
+    pre_transform : VkSurfaceTransformFlagBitsKHR;
+    if (surface_capabilities.supportedTransforms & .IDENTITY_BIT_KHR)
+        pre_transform = .IDENTITY_BIT_KHR;
+    else
+        pre_transform = surface_capabilities.currentTransform;
+
+    composite_alpha_flag_bits : VkCompositeAlphaFlagBitsKHR = .OPAQUE_BIT_KHR;
+    if (surface_capabilities.supportedCompositeAlpha & .OPAQUE_BIT_KHR)
+        composite_alpha_flag_bits = .OPAQUE_BIT_KHR;
+    else if (surface_capabilities.supportedCompositeAlpha & .INHERIT_BIT_KHR)
+        composite_alpha_flag_bits = .INHERIT_BIT_KHR;
+    else if (surface_capabilities.supportedCompositeAlpha & .PRE_MULTIPLIED_BIT_KHR)
+        composite_alpha_flag_bits = .PRE_MULTIPLIED_BIT_KHR;
+    else if (surface_capabilities.supportedCompositeAlpha & .POST_MULTIPLIED_BIT_KHR)
+        composite_alpha_flag_bits = .POST_MULTIPLIED_BIT_KHR;
+
+    prev_swap_chain := vulkan_objects.swap_chain;
+
+    swap_chain_create_info : VkSwapchainCreateInfoKHR;
+    swap_chain_create_info.surface = vulkan_objects.surface;
+    swap_chain_create_info.minImageCount = vulkan_objects.swap_chain_image_count;
+    swap_chain_create_info.imageFormat = selected_surface_format.format;
+    swap_chain_create_info.imageColorSpace = selected_surface_format.colorSpace;
+    swap_chain_create_info.imageExtent.width = swap_chain_size.width;
+    swap_chain_create_info.imageExtent.height = swap_chain_size.height;
+    swap_chain_create_info.imageArrayLayers = 1;
+    swap_chain_create_info.imageUsage = .COLOR_ATTACHMENT_BIT;
+    swap_chain_create_info.imageSharingMode = .EXCLUSIVE;
+    swap_chain_create_info.preTransform = pre_transform;
+    swap_chain_create_info.compositeAlpha = composite_alpha_flag_bits;
+    // vsync .FIFO_KHR
+    swap_chain_create_info.presentMode = .IMMEDIATE_KHR;
+    swap_chain_create_info.oldSwapchain = prev_swap_chain;
+
+    result = vkCreateSwapchainKHR(vulkan_objects.device, *swap_chain_create_info, null, *vulkan_objects.swap_chain);
+    if result != .SUCCESS {
+        print("vkCreateSwapchainKHR failed: %\n", result);
+        return false;
+    }
+
+    deinit_vulkan_swap_chain_images(vulkan_objects);
+
+    if prev_swap_chain 
+        vkDestroySwapchainKHR(vulkan_objects.device, prev_swap_chain, null);
+
+    vulkan_objects.swap_chain_width = swap_chain_size.width;
+    vulkan_objects.swap_chain_height = swap_chain_size.height;
+    vulkan_objects.swap_chain_format = selected_surface_format.format;
+
+    vkGetSwapchainImagesKHR(vulkan_objects.device, vulkan_objects.swap_chain, 
+        *vulkan_objects.swap_chain_image_count, null);
+    swap_chain_images := NewArray(vulkan_objects.swap_chain_image_count, VkImage);
+    defer free(swap_chain_images.data);
+    vkGetSwapchainImagesKHR(vulkan_objects.device, vulkan_objects.swap_chain,
+        *vulkan_objects.swap_chain_image_count, swap_chain_images.data);
+
+    vulkan_objects.swap_chain_image_views = NewArray(vulkan_objects.swap_chain_image_count, VkImageView);
+    for i : 0..vulkan_objects.swap_chain_image_views.count-1 {
+        image_view_create_info : VkImageViewCreateInfo;
+        image_view_create_info.image = swap_chain_images[i];
+        image_view_create_info.viewType = ._2D;
+        image_view_create_info.format = vulkan_objects.swap_chain_format;
+        image_view_create_info.components.r = .R;
+        image_view_create_info.components.g = .G;
+        image_view_create_info.components.b = .B;
+        image_view_create_info.components.a = .A;
+        image_view_create_info.subresourceRange.aspectMask = .COLOR_BIT;
+        image_view_create_info.subresourceRange.baseMipLevel = 0;
+        image_view_create_info.subresourceRange.levelCount = 1;
+        image_view_create_info.subresourceRange.baseArrayLayer = 0;
+        image_view_create_info.subresourceRange.layerCount = 1;
+
+        result = vkCreateImageView(vulkan_objects.device, *image_view_create_info, null, 
+            *vulkan_objects.swap_chain_image_views[i]);
+        if result != .SUCCESS {
+            print("vkCreateImageView failed for swapchain: %\n", result);
+            return false;
+        }
+    }
+
+    image_create_info : VkImageCreateInfo;
+    image_create_info.imageType = ._2D;
+    image_create_info.format = .D32_SFLOAT_S8_UINT;
+    image_create_info.extent.width = vulkan_objects.swap_chain_width;
+    image_create_info.extent.height = vulkan_objects.swap_chain
+
+    return true;
+}
+
 }
 
 deinit_vulkan :: (vulkan_objects: VulkanObjects) {
@@ -380,6 +518,11 @@ deinit_vulkan :: (vulkan_objects: VulkanObjects) {
         }
     }
 
+    deinit_vulkan_swap_chain_images(vulkan_objects);
+
+    if vulkan_objects.swap_chain
+        vkDestroySwapchainKHR(vulkan_objects.device, vulkan_objects.swap_chain, null);
+
     if vulkan_objects.device
         vkDestroyDevice(vulkan_objects.device, null);
 
@@ -388,6 +531,14 @@ deinit_vulkan :: (vulkan_objects: VulkanObjects) {
 
     if vulkan_objects.instance
         vkDestroyInstance(vulkan_objects.instance, null);
+}
+
+deinit_vulkan_swap_chain_images :: (vulkan_objects : VulkanObjects) {
+    for vulkan_objects.swap_chain_image_views {
+        if it
+            vkDestroyImageView(vulkan_objects.device, it, null);
+    }
+    free(vulkan_objects.swap_chain_image_views.data);
 }
 
 #if VULKAN_DEBUG {
