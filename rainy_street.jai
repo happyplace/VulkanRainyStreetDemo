@@ -468,14 +468,14 @@ init_vulkan_swap_chain :: (vulkan_objects: *VulkanObjects) -> bool {
 
     deinit_vulkan_swap_chain_images(vulkan_objects);
 
-    if prev_swap_chain 
+    if prev_swap_chain
         vkDestroySwapchainKHR(vulkan_objects.device, prev_swap_chain, null);
 
     vulkan_objects.swap_chain_width = swap_chain_size.width;
     vulkan_objects.swap_chain_height = swap_chain_size.height;
     vulkan_objects.swap_chain_format = selected_surface_format.format;
 
-    vkGetSwapchainImagesKHR(vulkan_objects.device, vulkan_objects.swap_chain, 
+    vkGetSwapchainImagesKHR(vulkan_objects.device, vulkan_objects.swap_chain,
         *vulkan_objects.swap_chain_image_count, null);
     swap_chain_images := NewArray(vulkan_objects.swap_chain_image_count, VkImage);
     defer free(swap_chain_images.data);
@@ -498,7 +498,7 @@ init_vulkan_swap_chain :: (vulkan_objects: *VulkanObjects) -> bool {
         image_view_create_info.subresourceRange.baseArrayLayer = 0;
         image_view_create_info.subresourceRange.layerCount = 1;
 
-        result = vkCreateImageView(vulkan_objects.device, *image_view_create_info, null, 
+        result = vkCreateImageView(vulkan_objects.device, *image_view_create_info, null,
             *vulkan_objects.swap_chain_image_views[i]);
         if result != .SUCCESS {
             print("vkCreateImageView failed for swapchain: %\n", result);
@@ -509,8 +509,8 @@ init_vulkan_swap_chain :: (vulkan_objects: *VulkanObjects) -> bool {
     return true;
 }
 
-vulkan_find_memory_by_flag_and_type :: (vulkan_objects : VulkanObjects, 
-                                        memory_property_flag_bits : VkMemoryPropertyFlagBits, 
+vulkan_find_memory_by_flag_and_type :: (vulkan_objects : VulkanObjects,
+                                        memory_property_flag_bits : VkMemoryPropertyFlagBits,
                                         memory_type_bits : u32) -> bool, u32 {
     memory_properties : VkPhysicalDeviceMemoryProperties;
     vkGetPhysicalDeviceMemoryProperties(vulkan_objects.physical_device, *memory_properties);
@@ -553,21 +553,21 @@ init_vulkan_depth_stencil :: (vulkan_objects : *VulkanObjects) -> bool {
 
     memory_allocate_info : VkMemoryAllocateInfo;
     memory_allocate_info.allocationSize = memory_requirements.size;
-    success, memoryTypeIndex := vulkan_find_memory_by_flag_and_type(vulkan_objects, .DEVICE_LOCAL_BIT, 
+    success, memoryTypeIndex := vulkan_find_memory_by_flag_and_type(vulkan_objects, .DEVICE_LOCAL_BIT,
         memory_requirements.memoryTypeBits);
     if !success {
         print("failed to find memory for depth stencil\n");
         return false;
     }
 
-    result = vkAllocateMemory(vulkan_objects.device, *memory_allocate_info, null, 
+    result = vkAllocateMemory(vulkan_objects.device, *memory_allocate_info, null,
         *vulkan_objects.depth_stencil_image_memory);
     if result != .SUCCESS {
         print("vkAllocateMemory failed for depth stencil\n");
         return false;
     }
 
-    result = vkBindImageMemory(vulkan_objects.device, vulkan_objects.depth_stencil_image, 
+    result = vkBindImageMemory(vulkan_objects.device, vulkan_objects.depth_stencil_image,
         vulkan_objects.depth_stencil_image_memory, 0);
     if result != .SUCCESS {
         print("vkBindImageMemory failed for depth stencil\n");
@@ -588,7 +588,7 @@ init_vulkan_depth_stencil :: (vulkan_objects : *VulkanObjects) -> bool {
     image_view_create_info.subresourceRange.baseArrayLayer = 0;
     image_view_create_info.subresourceRange.layerCount = 1;
 
-    result = vkCreateImageView(vulkan_objects.device, *image_view_create_info, null, 
+    result = vkCreateImageView(vulkan_objects.device, *image_view_create_info, null,
         *vulkan_objects.depth_stencil_image_view);
     if result != .SUCCESS {
         print("vkCreateImageView failed for depth stencil\n");
