@@ -36,9 +36,16 @@ VulkanObjects :: struct {
     depth_stencil_image_view : VkImageView;
     render_pass : VkRenderPass;
     framebuffers : [] VkFramebuffer;
+    swap_chain_resources : [] VulkanSwapChainResource;
+    swap_chain_resource_next_index : u32;
     #if VULKAN_DEBUG {
         debug_report_callback : VkDebugReportCallbackEXT;
     }
+}
+
+VulkanSwapChainResource :: struct {
+    acquire_image : VkSemaphore;
+    release_image : VkSemaphore;
 }
 
 VulkanFrameResource :: struct {
@@ -699,6 +706,23 @@ init_vulkan_frame_buffers :: (vulkan_objects: *VulkanObjects) -> bool {
             *vulkan_objects.framebuffers[i]);
         if result != .SUCCESS {
             print("vkCreateFramebuffer failed\n");
+            return false;
+        }
+    }
+
+    vulkan_objects.swap_chain_resources = NewArray(vulkan_objects.swap_chain_image_count, VulkanSwapChainResource);
+    for vulkan_objects.swap_chain_resources {
+        semaphore_create_info : VkSemaphoreCreateInfo;
+
+        result = vkCreateSemaphore(vulkan_objects.device, *semaphore_create_info, null, *it.acquire_image);
+        if result != .SUCCESS {
+            print("vkCreateSemaphore swap_chain_resource failed\n");
+            return false;
+        }
+
+        result = vkCreateSemaphore(vulkan_objects.device, *semaphore_create_info, null, *it.release_image);
+        if result != .SUCCESS {
+            print("vkCreateSemaphore swap_chain_resource failed\n");
             return false;
         }
     }
