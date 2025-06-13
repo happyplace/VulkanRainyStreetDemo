@@ -381,6 +381,12 @@ init_vulkan :: () -> bool, VulkanObjects {
     if !init_vulkan_depth_stencil(*vulkan_objects)
         return false, vulkan_objects;
 
+    if !init_vulkan_render_pass(*vulkan_objects)
+        return false, vulkan_objects;
+
+    if !init_vulkan_frame_buffers(*vulkan_objects)
+        return false, vulkan_objects;
+
     return true, vulkan_objects;
 }
 
