@@ -35,6 +35,7 @@ VulkanObjects :: struct {
     depth_stencil_image_memory : VkDeviceMemory;
     depth_stencil_image_view : VkImageView;
     render_pass : VkRenderPass;
+    framebuffers : [] VkFramebuffer;
     #if VULKAN_DEBUG {
         debug_report_callback : VkDebugReportCallbackEXT;
     }
@@ -665,6 +666,33 @@ init_vulkan_render_pass :: (vulkan_objects: *VulkanObjects) -> bool {
     return true;
 }
 
+init_vulkan_frame_buffers :: (vulkan_objects: *VulkanObjects) -> bool {
+    attachments : [2] VkImageView;
+    attachments[1] = vulkan_objects.depth_stencil_image_view;
+
+    framebuffer_create_info : VkFramebufferCreateInfo;
+    framebuffer_create_info.renderPass = vulkan_objects.render_pass;
+    framebuffer_create_info.attachmentCount = attachments.count;
+    framebuffer_create_info.pAttachments = attachments.data;
+    framebuffer_create_info.width = vulkan_objects.swap_chain_width;
+    framebuffer_create_info.height = vulkan_objects.swap_chain_height;
+    framebuffer_create_info.layers = 1;
+
+    vulkan_objects.framebuffers = NewArray(vulkan_objects.swap_chain_image_count, VkFramebuffer);
+    for it,i : vulkan_objects.framebuffers {
+        attachments[0] = vulkan_objects.swap_chain_image_views[i];
+
+        result := vkCreateFramebuffer(vulkan_objects.device, *framebuffer_create_info, null, 
+            *vulkan_objects.framebuffers[i]);
+        if result != .SUCCESS {
+            print("vkCreateFramebuffer failed\n");
+            return false;
+        }
+    }
+
+    return true;
+}
+
 deinit_vulkan :: (vulkan_objects: VulkanObjects) {
     #if VULKAN_DEBUG {
         if vulkan_objects.debug_report_callback {
@@ -675,6 +703,8 @@ deinit_vulkan :: (vulkan_objects: VulkanObjects) {
             vkDestroyDebugReportCallbackEXT(vulkan_objects.instance, vulkan_objects.debug_report_callback, null);
         }
     }
+
+    deinit_vulkan_framebuffers(vulkan_objects);
 
     if vulkan_objects.render_pass
         vkDestroyRenderPass(vulkan_objects.device, vulkan_objects.render_pass, null);
@@ -715,6 +745,28 @@ deinit_vulkan_depth_stencil :: (vulkan_objects : VulkanObjects) {
         vkFreeMemory(vulkan_objects.device, vulkan_objects.depth_stencil_image_memory, null);
 }
 
+deinit_vulkan_framebuffers :: (vulkan_objects : VulkanObjects) {
+    if vulkan_objects.framebuffers.count > 0 {
+        for it, i : vulkan_objects.framebuffers {
+            if vulkan_objects.framebuffers[i]
+                vkDestroyFramebuffer(vulkan_objects.device, vulkan_objects.framebuffers[i], null);
+        }
+
+        free(vulkan_objects.framebuffers.data);
+    }
+}
+
+deinit_vulkan_frame_resource :: (vulkan_objects : VulkanObjects, frame_resource : VulkanFrameResource) {
+    if frame_resource.command_buffer
+        vkFreeCommandBuffers(vulkan_objects.device, frame_resource.command_pool, 1, *frame_resource.command_buffer);
+
+    if frame_resource.command_pool
+        vkDestroyCommandPool(vulkan_objects.device, frame_resource.command_pool, null);
+
+    if frame_resource.submit_fence
+        vkDestroyFence(vulkan_objects.device, frame_resource.submit_fence, null);
+}
+
 #if VULKAN_DEBUG {
     vulkan_debug_callback :: (flags : VkDebugReportFlagsEXT, objType : VkDebugReportObjectTypeEXT, obj : u64,
                               location : u64, code : s32, layerPrefix : *u8, msg : *u8,
@@ -725,3 +777,4 @@ deinit_vulkan_depth_stencil :: (vulkan_objects : VulkanObjects) {
         return VK_FALSE;
     }
 }
+
