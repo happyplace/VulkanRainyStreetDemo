@@ -34,6 +34,7 @@ VulkanObjects :: struct {
     depth_stencil_image : VkImage;
     depth_stencil_image_memory : VkDeviceMemory;
     depth_stencil_image_view : VkImageView;
+    render_pass : VkRenderPass;
     #if VULKAN_DEBUG {
         debug_report_callback : VkDebugReportCallbackEXT;
     }
@@ -598,6 +599,72 @@ init_vulkan_depth_stencil :: (vulkan_objects : *VulkanObjects) -> bool {
     return true;
 }
 
+init_vulkan_render_pass :: (vulkan_objects: *VulkanObjects) -> bool {
+    attachment_descriptions : [2] VkAttachmentDescription;
+
+    {
+        using attachment_descriptions[0];
+
+        format = vulkan_objects.swap_chain_format;
+        samples = ._1_BIT;
+        loadOp = .CLEAR;
+        storeOp = .STORE;
+        stencilLoadOp = .DONT_CARE;
+        stencilStoreOp = .DONT_CARE;
+        initialLayout = .UNDEFINED;
+        finalLayout = .PRESENT_SRC_KHR;
+    }
+
+    {
+        using attachment_descriptions[1];
+
+        format = .D32_SFLOAT_S8_UINT;
+        samples = ._1_BIT;
+        loadOp = .CLEAR;
+        storeOp = .STORE;
+        stencilLoadOp = .DONT_CARE;
+        stencilStoreOp = .STORE;
+        initialLayout = .UNDEFINED;
+        finalLayout = .DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    }
+
+    colour_attachment_reference : VkAttachmentReference;
+    colour_attachment_reference.attachment = 0;
+    colour_attachment_reference.layout = .COLOR_ATTACHMENT_OPTIMAL;
+
+    depth_attachment_reference : VkAttachmentReference;
+    depth_attachment_reference.attachment = 1;
+    depth_attachment_reference.layout = .DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    subpass_description : VkSubpassDescription;
+    subpass_description.pipelineBindPoint = .GRAPHICS;
+    subpass_description.colorAttachmentCount = 1;
+    subpass_description.pColorAttachments = *colour_attachment_reference;
+    subpass_description.pDepthStencilAttachment = *depth_attachment_reference;
+
+    subpass_dependency : VkSubpassDependency;
+    subpass_dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    subpass_dependency.srcStageMask = .VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpass_dependency.dstStageMask = .VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    subpass_dependency.dstAccessMask = .VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | .VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+    render_pass_create_info : VkRenderPassCreateInfo;
+    render_pass_create_info.attachmentCount = attachment_descriptions.count;
+    render_pass_create_info.pAttachments = attachment_descriptions.data;
+    render_pass_create_info.subpassCount = 1;
+    render_pass_create_info.pSubpasses = *subpass_description;
+    render_pass_create_info.dependencyCount = 1;
+    render_pass_create_info.pDependencies = *subpass_dependency;
+
+    result := vkCreateRenderPass(vulkan_objects.device, *render_pass_create_info, null, *vulkan_objects.render_pass);
+    if result != .SUCCESS {
+        print("vkCreateRenderPass failed\n");
+        return false;
+    }
+
+    return true;
+}
+
 deinit_vulkan :: (vulkan_objects: VulkanObjects) {
     #if VULKAN_DEBUG {
         if vulkan_objects.debug_report_callback {
@@ -608,6 +675,9 @@ deinit_vulkan :: (vulkan_objects: VulkanObjects) {
             vkDestroyDebugReportCallbackEXT(vulkan_objects.instance, vulkan_objects.debug_report_callback, null);
         }
     }
+
+    if vulkan_objects.render_pass
+        vkDestroyRenderPass(vulkan_objects.device, vulkan_objects.render_pass, null);
 
     deinit_vulkan_depth_stencil(vulkan_objects);
 
