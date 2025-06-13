@@ -649,6 +649,23 @@ init_vulkan_swap_chain :: (vulkan_objects: *VulkanObjects) -> bool {
         }
     }
 
+    vulkan_objects.swap_chain_resources = NewArray(vulkan_objects.swap_chain_image_count, VulkanSwapChainResource);
+    for vulkan_objects.swap_chain_resources {
+        semaphore_create_info : VkSemaphoreCreateInfo;
+
+        result = vkCreateSemaphore(vulkan_objects.device, *semaphore_create_info, null, *it.acquire_image);
+        if result != .SUCCESS {
+            print("vkCreateSemaphore swap_chain_resource failed\n");
+            return false;
+        }
+
+        result = vkCreateSemaphore(vulkan_objects.device, *semaphore_create_info, null, *it.release_image);
+        if result != .SUCCESS {
+            print("vkCreateSemaphore swap_chain_resource failed\n");
+            return false;
+        }
+    }
+
     return true;
 }
 
@@ -827,23 +844,6 @@ init_vulkan_frame_buffers :: (vulkan_objects: *VulkanObjects) -> bool {
             *vulkan_objects.framebuffers[i]);
         if result != .SUCCESS {
             print("vkCreateFramebuffer failed\n");
-            return false;
-        }
-    }
-
-    vulkan_objects.swap_chain_resources = NewArray(vulkan_objects.swap_chain_image_count, VulkanSwapChainResource);
-    for vulkan_objects.swap_chain_resources {
-        semaphore_create_info : VkSemaphoreCreateInfo;
-
-        result = vkCreateSemaphore(vulkan_objects.device, *semaphore_create_info, null, *it.acquire_image);
-        if result != .SUCCESS {
-            print("vkCreateSemaphore swap_chain_resource failed\n");
-            return false;
-        }
-
-        result = vkCreateSemaphore(vulkan_objects.device, *semaphore_create_info, null, *it.release_image);
-        if result != .SUCCESS {
-            print("vkCreateSemaphore swap_chain_resource failed\n");
             return false;
         }
     }
