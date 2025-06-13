@@ -22,6 +22,9 @@ VulkanObjects :: struct {
     compute_queue_index: u32;
     transfer_queue_index: u32;
     device : VkDevice;
+    graphics_queue : VkQueue;
+    compute_queue : VkQueue;
+    transfer_queue : VkQueue;
     swap_chain_image_count : u32;
     swap_chain : VkSwapchainKHR;
     swap_chain_image_views : [] VkImageView;
@@ -79,11 +82,6 @@ main :: () {
 init_vulkan :: () -> bool, VulkanObjects {
     result : VkResult = .ERROR_INITIALIZATION_FAILED;
     vulkan_objects : VulkanObjects;
-
-    // init_render_pass
-    // init_frame_buffers
-    // init_vma_allocator
-    // init_shaderc_compiler
 
     extensions : [..] *u8;
     #if OS == .LINUX {
@@ -360,6 +358,13 @@ init_vulkan :: () -> bool, VulkanObjects {
         print("vkCreateDevice failed: %\n", result);
         return false, vulkan_objects;
     }
+
+    vkGetDeviceQueue(vulkan_objects.device, vulkan_objects.graphics_queue_index, 0, *vulkan_objects.graphics_queue);
+
+    vkGetDeviceQueue(vulkan_objects.device, vulkan_objects.compute_queue_index, 0, *vulkan_objects.compute_queue);
+
+    vkGetDeviceQueue(vulkan_objects.device, vulkan_objects.transfer_queue_index, 0, 
+        *vulkan_objects.transfer_queue);
 
     if !init_vulkan_swap_chain(*vulkan_objects)
         return false, vulkan_objects;
