@@ -41,6 +41,13 @@ VulkanObjects :: struct {
     }
 }
 
+VulkanFrameResource :: struct {
+    submit_fence : VkFence;
+    command_pool : VkCommandPool;
+    command_buffer : VkCommandBuffer;
+    swap_chain_image_index : u32;
+}
+
 main :: () {
     width : s32 = 1280;
     height : s32 = 720;
@@ -693,6 +700,40 @@ init_vulkan_frame_buffers :: (vulkan_objects: *VulkanObjects) -> bool {
     return true;
 }
 
+init_vulkan_frame_resource :: (vulkan_objects : VulkanObjects) -> bool, VulkanFrameResource {
+    result : VkResult = .ERROR_INITIALIZATION_FAILED;
+    frame_resource : VulkanFrameResource;
+
+    fence_create_info : VkFenceCreateInfo;
+    fence_create_info.flags = .SIGNALED_BIT;
+    result = vkCreateFence(vulkan_objects.device, *fence_create_info, null, *frame_resource.submit_fence);
+    if result != .SUCCESS {
+        print("vkCreateFence FrameResource failed\n");
+        return false, frame_resource;
+    }
+
+    command_pool_create_info : VkCommandPoolCreateInfo;
+    command_pool_create_info.queueFamilyIndex = vulkan_objects.graphics_queue_index;
+    result = vkCreateCommandPool(vulkan_objects.device, *command_pool_create_info, null, *frame_resource.command_pool);
+    if result != .SUCCESS {
+        print("vkCreateCommandPool FrameResource failed\n");
+        return false, frame_resource;
+    }
+
+    command_buffer_allocate_info : VkCommandBufferAllocateInfo;
+    command_buffer_allocate_info.commandPool = frame_resource.command_pool;
+    command_buffer_allocate_info.level = .VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    command_buffer_allocate_info.commandBufferCount = 1;
+    result = vkAllocateCommandBuffers(vulkan_objects.device, *command_buffer_allocate_info, 
+        *frame_resource.command_buffer);
+    if result != .SUCCESS {
+        print("vkAllocateCommandBuffers FrameResource failed\n");
+        return false, frame_resource;
+    }
+
+    return true, frame_resource;
+}
+
 deinit_vulkan :: (vulkan_objects: VulkanObjects) {
     #if VULKAN_DEBUG {
         if vulkan_objects.debug_report_callback {
@@ -732,6 +773,14 @@ deinit_vulkan_swap_chain_images :: (vulkan_objects : VulkanObjects) {
             vkDestroyImageView(vulkan_objects.device, it, null);
     }
     free(vulkan_objects.swap_chain_image_views.data);
+
+    for vulkan_objects.swap_chain_resources {
+        if it.acquire_image
+            vkDestroySemaphore(vulkan_objects.device, it.acquire_image, null);
+
+        if it.release_image
+            vkDestroySemaphore(vulkan_objects.device, it.release_image, null);
+    }
 }
 
 deinit_vulkan_depth_stencil :: (vulkan_objects : VulkanObjects) {
