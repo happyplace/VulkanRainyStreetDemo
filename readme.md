@@ -26,3 +26,6 @@
 | ------ | ------ |
 | Vulkan | built-in |
 | SDL 3 | [overlord-systems' jai bindings](https://github.com/overlord-systems/jai-sdl3) |
+
+## jai Version
+beta 0.2.014
