@@ -25,4 +25,4 @@
 | Name | Binding |
 | ------ | ------ |
 | Vulkan | built-in |
-| SDL 3 | [jai bindings](https://github.com/overlord-systems/jai-sdl3) |
+| SDL 3 | [overlord-systems' jai bindings](https://github.com/overlord-systems/jai-sdl3) |
