@@ -1,15 +1,12 @@
 #import "Basic";
 #import "Input";
+#import "jai-sdl3";
 #import "Math";
 #import "Vulkan";
 
-#if OS == .LINUX {
-    #import "SDL";
-
-    SDL_Vulkan_GetInstanceExtensions :: (window: *SDL_Window, pCount: *u32, pNames: **u8) -> SDL_bool #foreign SDL2;
-    SDL_Vulkan_CreateSurface :: (window: *SDL_Window, instance: VkInstance, surface: *VkSurfaceKHR) -> SDL_bool #foreign SDL2;
-    SDL_Vulkan_GetDrawableSize :: (window: *SDL_Window, w: *u32, h: *u32) #foreign SDL2;
-}
+libsdl3 :: #library,system "libSDL3";
+SDL_Vulkan_GetInstanceExtensions :: (count: *u32) -> **u8 #foreign libsdl3;
+SDL_Vulkan_CreateSurface :: (window: *SDL_Window, instance: VkInstance, allocator: *VkAllocationCallbacks, surface: *VkSurfaceKHR) -> [] *u8 #foreign libsdl3;
 
 VULKAN_DEBUG :: true;
 
@@ -60,14 +57,13 @@ main :: () {
     width : s32 = 1280;
     height : s32 = 720;
 
-    if SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) < 0 {
+    if !SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD) {
         print("failed to init SDL: %\n", to_string(SDL_GetError()));
         return;
     }
     defer SDL_Quit();
 
-    window = SDL_CreateWindow("Vulkan Rainy Street Demo", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-        width, height, SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+    window = SDL_CreateWindow("Vulkan Rainy Street Demo", width, height, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
     if window == null {
         print("failed to create SDL window: %\n", to_string(SDL_GetError()));
         return;
@@ -93,10 +89,10 @@ main :: () {
         event : SDL_Event;
         while SDL_PollEvent(*event) {
             if event.type == {
-                case SDL_QUIT;
+                case xx SDL_EventType.QUIT;
                     quit = true;
-                case SDL_KEYUP;
-                    if event.key.keysym.sym == SDLK_ESCAPE quit = true;
+                case xx SDL_EventType.KEY_UP;
+                    if event.key.scancode == SDL_Scancode.ESCAPE quit = true;
             }
         }
 
@@ -223,13 +219,9 @@ init_vulkan :: () -> bool, VulkanObjects {
     extensions : [..] *u8;
     #if OS == .LINUX {
         extension_count : u32;
-        SDL_Vulkan_GetInstanceExtensions(window, *extension_count, null);
-        required_extensions := NewArray(extension_count, *u8);
-        defer free(required_extensions.data);
-        SDL_Vulkan_GetInstanceExtensions(window, *extension_count, required_extensions.data);
-
-        for required_extensions {
-            array_add(*extensions, it);
+        required_extensions := SDL_Vulkan_GetInstanceExtensions(*extension_count);
+        for 0..extension_count-1 {
+            array_add(*extensions, required_extensions[it]);
         }
     }
     else
@@ -344,7 +336,7 @@ init_vulkan :: () -> bool, VulkanObjects {
     }
 
     #if OS == .LINUX {
-        if !SDL_Vulkan_CreateSurface(window, vulkan_objects.instance, *vulkan_objects.surface) {
+        if !SDL_Vulkan_CreateSurface(window, vulkan_objects.instance, null, *vulkan_objects.surface) {
             print("failed to create SDL surface: %\n", to_string(SDL_GetError()));
         }
     }
@@ -556,12 +548,12 @@ init_vulkan_swap_chain :: (vulkan_objects: *VulkanObjects) -> bool {
 
     swap_chain_size : VkExtent2D;
     if surface_capabilities.currentExtent.width == 0xffffffff {
-        window_width : u32;
-        window_height : u32;
-        SDL_Vulkan_GetDrawableSize(window, *window_width, *window_height);
+        window_width : s32;
+        window_height : s32;
+        SDL_GetWindowSizeInPixels(window, *window_width, *window_height);
 
-        swap_chain_size.width = window_width;
-        swap_chain_size.height = window_height;
+        swap_chain_size.width = xx window_width;
+        swap_chain_size.height = xx window_height;
     }
     else {
         swap_chain_size = surface_capabilities.currentExtent;

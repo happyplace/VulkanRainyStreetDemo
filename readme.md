@@ -22,7 +22,7 @@
 > target for what the final scene should look like
 
 ## External Libraries:
-| Name | Path |
+| Name | Binding |
 | ------ | ------ |
-| Vulkan | *(links against system library)* |
-
+| Vulkan | built-in |
+| SDL 3 | [jai bindings](https://github.com/overlord-systems/jai-sdl3) |
