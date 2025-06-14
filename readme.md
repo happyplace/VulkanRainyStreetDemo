@@ -21,7 +21,7 @@
 
 > target for what the final scene should look like
 
-## External Libraries:
+## External Modules:
 | Name | Binding |
 | ------ | ------ |
 | Vulkan | built-in |
