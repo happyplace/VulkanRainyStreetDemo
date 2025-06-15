@@ -119,4 +119,5 @@ compile_commands.json
 
 # jai
 .build
-rainy_street
+bin
+
