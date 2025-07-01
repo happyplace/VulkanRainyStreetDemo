@@ -1,7 +1,7 @@
 #import "Basic";
 
 #import "Basic";
-#import "jai-sdl3";
+SDL :: #import "jai-sdl3";
 
 window : *void;
 
@@ -38,7 +38,7 @@ main :: () {
 
     quit := false;
     while !quit {
-        event : SDL_Event;
+        event : SDL.SDL_Event;
         while SDL_PollEvent(*event) {
             if event.type == {
                 case xx SDL_EventType.QUIT;
