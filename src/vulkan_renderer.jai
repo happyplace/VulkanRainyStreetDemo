@@ -85,9 +85,9 @@ init_vulkan :: () -> bool, VulkanObjects {
         // BAD things will happen!
         count: s64 = 0;
 
-        while <<s {
-            count += 1;
-            s += 1;
+        while s.* {
+            count = count + 1;
+            s = s + 1;
         }
 
         return count;
